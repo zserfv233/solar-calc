@@ -28,7 +28,7 @@ export const postcodesSchema = z.object({
           .refine((r) => r.from <= r.to, '区间起点不能大于终点'),
       )
       .min(1)
-      .refine(noOverlap((r) => r.from, (r) => r.to), '邮编区间不能重叠'),
+      .refine(noOverlap<{ from: number; to: number }>((r) => r.from, (r) => r.to), '邮编区间不能重叠'),
   }),
 });
 
@@ -55,7 +55,7 @@ export const batteryRebateSchema = z.object({
         }),
       )
       .min(1)
-      .refine(noOverlap((p) => p.start, (p) => p.end), '系数时间段不能重叠'),
+      .refine(noOverlap<{ start: string; end: string }>((p) => p.start, (p) => p.end), '系数时间段不能重叠'),
     tiers: z
       .array(
         z.object({
