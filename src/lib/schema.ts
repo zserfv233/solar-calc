@@ -78,6 +78,18 @@ export const defaultsVicSchema = z.object({
       annual_usage_kwh: z.number().positive(),
       feed_in_tariff_c_per_kwh: z.number().min(0).max(30),
       stc_price_dollars: z.number().min(0).max(45),
+      typical_quotes_after_rebate: z.object({
+        ...meta,
+        solar_6_6kw_dollars: z.number().min(1000).max(30000),
+        battery_10kwh_dollars: z.number().min(1000).max(40000),
+        battery_20kwh_dollars: z.number().min(1000).max(60000),
+      }),
+      battery_warranty: z.object({
+        ...meta,
+        warranty_years: z.number().int().min(1).max(25),
+        end_of_warranty_retention: fraction,
+        throughput_mwh_per_usable_kwh: z.number().positive().max(10),
+      }),
       assumptions_from_plan: z.object({
         daytime_share: z.object({ away: fraction, partly_home: fraction, mostly_home: fraction }),
         solar_size_kw: z.number().positive(),

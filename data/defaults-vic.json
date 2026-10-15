@@ -51,6 +51,31 @@
         0.03,
         0.05
       ]
+    },
+    "typical_quotes_after_rebate": {
+      "source": [
+        "https://www.solarchoice.net.au/solar-panels/solar-power-system-prices/",
+        "https://www.energymatters.com.au/renewable-news/how-much-will-batteries-cost-when-the-federal-battery-rebate-reduces-from-1-may-2026/"
+      ],
+      "source_note": "二手来源（安装商价格汇总），已扣补贴、含 GST 和安装，仅作参考默认值。太阳能：Solar Choice 2026-10-01 墨尔本 6 kW $5,810、7 kW $6,490，6.6 kW 按线性插值取整为 $6,200。电池：Energy Matters 2026-03-11 对 2026-05-01 之后的预计价。计划每月更新（2026-10-15 用户决定）。",
+      "last_checked": "2026-10-15",
+      "checked_by": "ai",
+      "solar_6_6kw_dollars": 6200,
+      "battery_10kwh_dollars": 9240,
+      "battery_20kwh_dollars": 16490
+    },
+    "battery_warranty": {
+      "source": [
+        "https://energylibrary.tesla.com/docs/Public/EnergyStorage/Powerwall/General/Warranty/en-au/Powerwall-Warranty-AU-NZ-EN.pdf",
+        "https://www.sigenergy.com/uploads/au_download/1779788087551504.pdf",
+        "https://saegroup.com.au/wp-content/uploads/BYD-Battery-Box-Premium-HVS-HVM-Limited-Warranty-Letter-AU-v1.0.pdf"
+      ],
+      "source_note": "三款常见电池的澳洲质保书取保守值。质保年限：三款都是 10 年。末期保留容量：Tesla 70%、Sigenergy 70%、BYD 60%，取 60%。吞吐上限：Tesla 用于太阳能自用时不限；Sigenergy BAT 10.0 为 33.29 MWh（每 kWh 约 3.33 MWh）；BYD HVS 10.2 为 30.82 MWh（每 kWh 约 3.01 MWh），取每 kWh 可用容量 3.0 MWh。质保到期不等于电池报废，模型按质保期保守计算。",
+      "last_checked": "2026-10-15",
+      "checked_by": "ai",
+      "warranty_years": 10,
+      "end_of_warranty_retention": 0.6,
+      "throughput_mwh_per_usable_kwh": 3.0
     }
   }
 }
