@@ -2,9 +2,10 @@
   "source": [
     "https://www.esc.vic.gov.au/electricity-and-gas/prices-tariffs-and-benchmarks/victorian-default-offer",
     "https://www.aer.gov.au/system/files/Residential%20energy%20consumption%20benchmarks%20-%209%20December%202020_0.pdf",
-    "https://www.esc.vic.gov.au/electricity-and-gas/electricity-and-gas-tariffs-and-benchmarks/minimum-feed-tariff"
+    "https://www.esc.vic.gov.au/electricity-and-gas/electricity-and-gas-tariffs-and-benchmarks/minimum-feed-tariff",
+    "https://www.ecovantage.com.au/features/market-update-9-october-2026/"
   ],
-  "source_note": "电价：ESC 维州默认电价（VDO）2026–27 住宅单一费率，含 GST，2026-07-01 至 2027-06-30 有效，按配电区不同。用电量：AER 2020 年住宅用电基准 Table 17，气候区 6（含墨尔本）3 口之家，四季相加 1,143+1,165+1,606+1,163=5,077 kWh。上网电价：ESC 页面写明 2025-07-01 起维州不再设最低上网电价。默认配电区取 5 个配电区用电价的中位数 Jemena（页面提供下拉框让用户选，2026-10-15 用户决定）。上网电价默认 0：维州没有官方最低值，取最保守的值，页面提示用户照电费单填写（2026-10-15 用户决定）。STC 单价为 null，等人工决定。",
+  "source_note": "电价：ESC 维州默认电价（VDO）2026–27 住宅单一费率，含 GST，2026-07-01 至 2027-06-30 有效，按配电区不同。用电量：AER 2020 年住宅用电基准 Table 17，气候区 6（含墨尔本）3 口之家，四季相加 1,143+1,165+1,606+1,163=5,077 kWh。上网电价：ESC 页面写明 2025-07-01 起维州不再设最低上网电价。默认配电区取 5 个配电区用电价的中位数 Jemena（页面提供下拉框让用户选，2026-10-15 用户决定）。上网电价默认 0：维州没有官方最低值，取最保守的值，页面提示用户照电费单填写（2026-10-15 用户决定）。STC 单价 38 澳元：官方不公布市场价，取执行方案假设（安装商转给用户的价格通常略低于市场价），参考 Ecovantage 2026-10-07 市场成交价 39.90 澳元和 CER 清算所固定价 40 澳元（2026-10-15 用户决定）。",
   "last_checked": "2026-10-15",
   "checked_by": "ai",
   "values": {
@@ -33,7 +34,7 @@
     "default_distributor": "Jemena",
     "annual_usage_kwh": 5077,
     "feed_in_tariff_c_per_kwh": 0,
-    "stc_price_dollars": null,
+    "stc_price_dollars": 38,
     "assumptions_from_plan": {
       "daytime_share": {
         "away": 0.3,
