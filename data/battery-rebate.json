@@ -1,0 +1,29 @@
+{
+  "source": [
+    "https://cer.gov.au/schemes/renewable-energy-target/small-scale-renewable-energy-scheme/small-scale-technology-certificates/calculate-small-scale-technology-certificate-entitlements",
+    "https://cer.gov.au/news-and-media/media/2026/march/battery-rebates-are-changing-1-may-2026"
+  ],
+  "source_note": "STC 系数按每 kWh 可用容量（useable capacity）计。三档比例从 2026-05-01 起生效；CER 没有写超过 50 kWh 的部分，这里按方案处理为 0。",
+  "last_checked": "2026-10-15",
+  "checked_by": "ai",
+  "values": {
+    "factor_periods": [
+      { "start": "2025-01-01", "end": "2025-12-31", "factor": 9.3 },
+      { "start": "2026-01-01", "end": "2026-04-30", "factor": 8.4 },
+      { "start": "2026-05-01", "end": "2026-12-31", "factor": 6.8 },
+      { "start": "2027-01-01", "end": "2027-06-30", "factor": 5.7 },
+      { "start": "2027-07-01", "end": "2027-12-31", "factor": 5.2 },
+      { "start": "2028-01-01", "end": "2028-06-30", "factor": 4.6 },
+      { "start": "2028-07-01", "end": "2028-12-31", "factor": 4.1 },
+      { "start": "2029-01-01", "end": "2029-06-30", "factor": 3.6 },
+      { "start": "2029-07-01", "end": "2029-12-31", "factor": 3.1 },
+      { "start": "2030-01-01", "end": "2030-06-30", "factor": 2.6 },
+      { "start": "2030-07-01", "end": "2030-12-31", "factor": 2.1 }
+    ],
+    "tiers": [
+      { "from_kwh": 0, "to_kwh": 14, "share": 1 },
+      { "from_kwh": 14, "to_kwh": 28, "share": 0.6 },
+      { "from_kwh": 28, "to_kwh": 50, "share": 0.15 }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "source": [
+    "https://www.esc.vic.gov.au/electricity-and-gas/prices-tariffs-and-benchmarks/victorian-default-offer",
+    "https://www.aer.gov.au/system/files/Residential%20energy%20consumption%20benchmarks%20-%209%20December%202020_0.pdf",
+    "https://www.esc.vic.gov.au/electricity-and-gas/electricity-and-gas-tariffs-and-benchmarks/minimum-feed-tariff"
+  ],
+  "source_note": "电价：ESC 维州默认电价（VDO）2026–27 住宅单一费率，含 GST，2026-07-01 至 2027-06-30 有效，按配电区不同。用电量：AER 2020 年住宅用电基准 Table 17，气候区 6（含墨尔本）3 口之家，四季相加 1,143+1,165+1,606+1,163=5,077 kWh。上网电价：ESC 页面写明 2025-07-01 起维州不再设最低上网电价。值为 null 的项目还没有找到官方来源，等人工决定。",
+  "last_checked": "2026-10-15",
+  "checked_by": "ai",
+  "values": {
+    "vdo_flat_2026_27": {
+      "AusNet Services": { "usage_c_per_kwh": 31.98, "supply_dollars_per_day": 1.2824 },
+      "CitiPower": { "usage_c_per_kwh": 25.96, "supply_dollars_per_day": 1.2114 },
+      "Jemena": { "usage_c_per_kwh": 27.47, "supply_dollars_per_day": 1.2713 },
+      "Powercor": { "usage_c_per_kwh": 28.22, "supply_dollars_per_day": 1.3805 },
+      "United Energy": { "usage_c_per_kwh": 27.35, "supply_dollars_per_day": 1.1912 }
+    },
+    "default_distributor": null,
+    "annual_usage_kwh": 5077,
+    "feed_in_tariff_c_per_kwh": null,
+    "stc_price_dollars": null,
+    "assumptions_from_plan": {
+      "daytime_share": { "away": 0.3, "partly_home": 0.45, "mostly_home": 0.6 },
+      "solar_size_kw": 6.6,
+      "existing_solar_size_kw": 6.6,
+      "battery_usable_kwh": 10,
+      "round_trip_efficiency": 0.9,
+      "panel_degradation_per_year": 0.005,
+      "price_escalation_scenarios": [0, 0.03, 0.05]
+    }
+  }
+}
