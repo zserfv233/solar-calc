@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import defaultsVicRaw from '../data/defaults-vic.json';
-import { defaultsVicSchema } from '../src/lib/schema';
+import postcodesRaw from '../data/postcodes-vic.json';
+import { defaultsVicSchema, postcodesSchema } from '../src/lib/schema';
 import * as data from '../src/lib/data';
 
 describe('data/ 校验', () => {
@@ -28,5 +29,19 @@ describe('data/ 校验', () => {
     const bad = structuredClone(defaultsVicRaw);
     bad.values.stc_price_dollars = 99;
     expect(defaultsVicSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it('效率为 0、寿命下限大于上限、邮编区间重叠都会被拒绝', () => {
+    const eff = structuredClone(defaultsVicRaw);
+    eff.values.assumptions_from_plan.round_trip_efficiency = 0;
+    expect(defaultsVicSchema.safeParse(eff).success).toBe(false);
+
+    const life = structuredClone(defaultsVicRaw);
+    life.values.battery_expected_life.lithium_ion_years_min = 20;
+    expect(defaultsVicSchema.safeParse(life).success).toBe(false);
+
+    const pc = structuredClone(postcodesRaw);
+    pc.values.ranges.push({ ...pc.values.ranges[0], zone: 3 });
+    expect(postcodesSchema.safeParse(pc).success).toBe(false);
   });
 });

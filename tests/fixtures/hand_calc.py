@@ -190,7 +190,7 @@ for c in CASES:
             f"| N_batt（核对用） | ⌊{F}×{fmt(tier,2)}⌋（2026-05-01 起三档，最多 50 kWh） | {N_batt} 张 |",
             f"| 净成本 | 报价已扣补贴 | ${net:,.2f} |", ""]
 
-    bases = [("只算质保期", WY)] + ([(f"按预期寿命 {EL} 年", EL)] if has_b else [])
+    bases = [("只算质保期", WY)] + ([(f"按预期寿命 {EL} 年（政府指南 10–15 年的上端情景）", EL)] if has_b else [])
     for label, life in bases:
         out += [f"**{label}**（上网电价 {FIT} c/kWh）" if has_b else f"**结果**（上网电价 {FIT} c/kWh）", "",
                 "| 电价年涨幅 | 回本 | 电池计收益年数 | 10 年累计省钱 | 10 年净收益（未计维护及资金成本） | 电池累计放电 |",
@@ -212,23 +212,25 @@ for c in CASES:
     if has_b:
         # 电池增量：同一家庭、同一太阳能条件下，有电池减去没电池（只加电池的用例本身就是增量）
         out += ["**电池部分单独看**（同一家庭、同样的太阳能，有电池 − 没电池）", "",
-                "| 计算口径 | 电价年涨幅 | 电池成本 | 电池带来的 10 年增量省钱 | 增量回本 | 每放 1 度电的电池成本 | 每度电替你省的钱（第 1 年） |",
+                "| 计算口径 | 电价年涨幅 | 电池成本 | 电池带来的 10 年增量省钱 | 增量回本 | 每放 1 度电的电池成本 | 每放 1 度电平均替你省的钱 |",
                 "| --- | --- | --- | --- | --- | --- | --- |"]
-        value_per_kwh = p0 - f / eta
         for label, life in bases:
             for esc in A["price_escalation_scenarios"]:
                 cost = c["battery_quote"]
                 if c["mode"] == "solar":
                     w_ = simulate(c, esc, life, FIT); o_ = simulate(c, esc, life, FIT, C=0)
-                    inc10 = w_[1] - o_[1]
+                    inc10 = w_[1] - o_[1]; inc_life = w_[5][life - 1] - o_[5][life - 1]
                     co, yrs = w_[3], w_[2]
                 else:
-                    w_ = simulate(c, esc, life, FIT); inc10 = w_[1]; co, yrs = w_[3], w_[2]
+                    w_ = simulate(c, esc, life, FIT); inc10 = w_[1]; inc_life = w_[5][life - 1]
+                    co, yrs = w_[3], w_[2]
+                value_per_kwh = inc_life / co  # 同一期间、按放电量加权的平均省钱
                 inc_pb = incremental_payback(c, esc, life, FIT)
                 out.append(f"| {label} | {int(esc*100)}% | ${cost:,} | ${inc10:,.2f} | {pb_text(inc_pb, yrs, True)} | "
                            f"${cost/co:,.3f}/kWh | ${value_per_kwh:,.3f}/kWh |")
         out += ["", f"说明：「每放 1 度电的电池成本」= 电池成本 ÷ 计收益期间累计放电量，思路同 HOMER 的电池损耗成本；"
-                f"「每度电替你省的钱」= 买电电价 − 上网电价/η（放 1 度电要少卖 1/η 度）。前者高于后者时，电池单独看不划算。", ""]
+                f"「每放 1 度电平均替你省的钱」= 同一期间电池带来的累计增量省钱 ÷ 同一期间累计放电量，已包含电价上涨和少卖的上网电量（放 1 度电要少卖 1/η 度）。"
+                f"两者口径相同，所以前者高于后者，就等于这段期间内电池单独看回不了本。", ""]
 
 out += ["## 电池 STC 边界核对（第 5 步边界测试用）", "",
         "| 可用容量 | 安装日期 | 计入容量 | STC 张数 | 说明 |", "| --- | --- | --- | --- | --- |"]

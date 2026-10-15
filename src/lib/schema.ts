@@ -10,6 +10,10 @@ const meta = {
 
 const fraction = z.number().min(0).max(1);
 
+// 按起点排序后，相邻区间不能重叠（允许中间有空档）
+const noOverlap = <T>(start: (x: T) => number | string, end: (x: T) => number | string) => (xs: T[]) =>
+  [...xs].sort((a, b) => (start(a) < start(b) ? -1 : 1)).every((x, i, arr) => i === 0 || start(x) > end(arr[i - 1]));
+
 export const postcodesSchema = z.object({
   ...meta,
   values: z.object({
@@ -23,7 +27,8 @@ export const postcodesSchema = z.object({
           })
           .refine((r) => r.from <= r.to, '区间起点不能大于终点'),
       )
-      .min(1),
+      .min(1)
+      .refine(noOverlap((r) => r.from, (r) => r.to), '邮编区间不能重叠'),
   }),
 });
 
@@ -49,7 +54,8 @@ export const batteryRebateSchema = z.object({
           factor: z.number().min(0).max(10),
         }),
       )
-      .min(1),
+      .min(1)
+      .refine(noOverlap((p) => p.start, (p) => p.end), '系数时间段不能重叠'),
     tiers: z
       .array(
         z.object({
@@ -97,13 +103,14 @@ export const defaultsVicSchema = z.object({
         ...meta,
         lithium_ion_years_min: z.number().int().min(1).max(30),
         lithium_ion_years_max: z.number().int().min(1).max(30),
-      }),
+      })
+      .refine((v) => v.lithium_ion_years_min <= v.lithium_ion_years_max, '寿命下限不能大于上限'),
       assumptions_from_plan: z.object({
         daytime_share: z.object({ away: fraction, partly_home: fraction, mostly_home: fraction }),
         solar_size_kw: z.number().positive(),
         existing_solar_size_kw: z.number().positive(),
         battery_usable_kwh: z.number().positive(),
-        round_trip_efficiency: fraction,
+        round_trip_efficiency: z.number().gt(0).max(1),
         panel_degradation_per_year: fraction,
         price_escalation_scenarios: z.array(fraction).min(1),
       }),

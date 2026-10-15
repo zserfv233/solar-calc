@@ -79,7 +79,7 @@
     },
     "battery_expected_life": {
       "source": "https://www.energy.gov.au/solar/use-your-solar-system/replace-and-recycle-your-solar-system",
-      "source_note": "澳洲政府 energy.gov.au：锂电池寿命 10–15 年。网站同时展示「只算质保期」和「按预期寿命 15 年」两种结果。质保期后容量按质保期内的同一速度继续线性衰减，是假设。",
+      "source_note": "澳洲政府 energy.gov.au：锂离子电池平均寿命 10–15 年。网站同时展示「只算质保期（10 年）」和「按预期寿命 15 年」两种结果；15 年是这个区间的上端情景，不是任何品牌的产品保证。两个假设：质保期后容量按质保期内的同一速度继续线性衰减；15 年情景仍沿用质保书里的吞吐上限（每 kWh 可用容量 3 MWh），到达后不再计电池收益，这是额外的保守假设，不是官方的物理寿命限额。",
       "last_checked": "2026-10-16",
       "checked_by": "ai",
       "lithium_ion_years_min": 10,
