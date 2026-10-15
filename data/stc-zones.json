@@ -5,7 +5,7 @@
   ],
   "source_note": "分区系数（MWh/kW/年）来自 CER 邮编分区表 Table 1；视同年限来自 CER「Calculate STC entitlements」页面（页面更新于 2026-09-18）。",
   "last_checked": "2026-10-15",
-  "checked_by": "ai",
+  "checked_by": "human",
   "values": {
     "zone_ratings": { "1": 1.622, "2": 1.536, "3": 1.382, "4": 1.185 },
     "deeming_years_by_install_year": {

@@ -2,7 +2,7 @@
   "source": "https://cer.gov.au/document/postcode-zone-ratings-and-zones-solar-panel-systems",
   "source_note": "CER《Postcode zone ratings and zones for solar (photovoltaic) systems》Table 1 第 37–61 项和第 136 项（As of 1 January 2020）。第 136 项是 7000–8999，这里只取维州的 8000–8999。",
   "last_checked": "2026-10-15",
-  "checked_by": "ai",
+  "checked_by": "human",
   "values": {
     "ranges": [
       { "from": 3000, "to": 3035, "zone": 4 },
