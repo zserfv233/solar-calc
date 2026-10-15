@@ -1,9 +1,11 @@
 {
   "source": [
     "https://cer.gov.au/schemes/renewable-energy-target/small-scale-renewable-energy-scheme/small-scale-technology-certificates/calculate-small-scale-technology-certificate-entitlements",
-    "https://cer.gov.au/news-and-media/media/2026/march/battery-rebates-are-changing-1-may-2026"
+    "https://cer.gov.au/news-and-media/media/2026/march/battery-rebates-are-changing-1-may-2026",
+    "https://cer.gov.au/schemes/renewable-energy-target/small-scale-renewable-energy-scheme/small-scale-renewable-energy-systems/solar-batteries",
+    "https://cer.gov.au/news-and-media/news/2025/may/solar-batteries-to-be-eligible-under-small-scale-renewable-energy-scheme"
   ],
-  "source_note": "STC 系数按每 kWh 可用容量（useable capacity）计。三档比例从 2026-05-01 起生效；CER 没有写超过 50 kWh 的部分，这里按方案处理为 0。 电池 STC 张数向下取整：CER 没有写明，按保守原则和太阳能板一致处理（2026-10-15 用户决定）。",
+  "source_note": "STC 系数按每 kWh 可用容量（useable capacity）计。电池从 2025-07-01 起可申领 STC（CER 2025 年 5 月公告）；三档比例从 2026-05-01 起生效（CER 2026 年 3 月公告），之前按全部可用容量计算；CER 明确只有前 50 kWh 可用容量可申领 STC，系统标称容量须在 5–100 kWh。安装日期早于 2025-07-01 或晚于系数表最后一期（2030-12-31）时不适用。电池 STC 张数向下取整：CER 没有写明，按保守原则和太阳能板一致处理（2026-10-15 用户决定）。",
   "last_checked": "2026-10-15",
   "checked_by": "ai",
   "values": {
@@ -81,6 +83,9 @@
         "share": 0.15
       }
     ],
-    "rounding": "floor"
+    "rounding": "floor",
+    "eligible_from": "2025-07-01",
+    "tiers_effective_from": "2026-05-01",
+    "stc_cap_usable_kwh": 50
   }
 }

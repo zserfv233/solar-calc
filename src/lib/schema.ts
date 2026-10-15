@@ -60,6 +60,9 @@ export const batteryRebateSchema = z.object({
       )
       .min(1),
     rounding: z.enum(['floor']),
+    eligible_from: z.iso.date(),
+    tiers_effective_from: z.iso.date(),
+    stc_cap_usable_kwh: z.number().positive().max(100),
   }),
 });
 

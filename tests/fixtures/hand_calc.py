@@ -4,11 +4,13 @@
 政策、价格和质保数字从 data/ 读取；用例自身的输入写在 CASES 里。
 
 模型相对执行方案原文的修订（2026-10-15 用户确认）：
-- 第 1 层：电池默认每天充满，按稳定状态计算：B = min(E, C_n, L_night/η)，B_out = B×η。
+- 第 1 层：电池默认每天充满，按稳定状态计算。C 是「可用容量」，指电池能放出来给家里用的电量（放电端），
+  所以 B_out = min(E×η, C_n, L_night)，充进去的电 B = B_out/η（2026-10-16 按核查报告修正测量端）。
   头天晚上没用完的电留在电池里，第二天只需补充用掉的部分。
 - 第 2 层：电池利用率 = B / C（第 1 年）。
-- 第 3 层：电池寿命 = 质保年限与吞吐上限先到者；容量从 100% 线性衰减，到质保最后一年后降到末期保留比例。
-  寿命结束后电池不再带来收益（太阳能板继续发电）。
+- 第 3 层：只计算质保期内的电池收益（保守情景，质保到期不等于电池报废）。质保期 = 质保年限与吞吐上限先到者；
+  吞吐上限在年中触发时，按当年剩余额度折算电池收益。容量从 100% 线性衰减（第 n 年取年初容量）。
+  质保期后电池不再计收益（太阳能板继续发电）。
 """
 import json, math, pathlib
 
@@ -26,9 +28,21 @@ def battery_factor(date):
 
 def daily(G, L_day, L_night, C, eta):
     D = min(G, L_day); E = G - D
-    B = min(E, C, L_night / eta) if C > 0 else 0.0
-    B_out = B * eta; X = E - B
+    B_out = min(E * eta, C, L_night) if C > 0 else 0.0
+    B = B_out / eta; X = E - B
     return D, E, B, B_out, X
+
+def battery_stcs(C, date):
+    """电池 STC 张数：资格日期之外为 0；2026-05-01 前按全部可用容量计，之后按三档；最多计 50 kWh。"""
+    last_end = battery["factor_periods"][-1]["end"]
+    if C <= 0 or date < battery["eligible_from"] or date > last_end:
+        return 0, 0.0
+    Ce = min(C, battery["stc_cap_usable_kwh"])
+    if date < battery["tiers_effective_from"]:
+        eff = Ce
+    else:
+        eff = sum(t["share"] * max(0.0, min(Ce, t["to_kwh"]) - t["from_kwh"]) for t in battery["tiers"])
+    return math.floor(battery_factor(date) * eff), eff
 
 def capacity(C, n):
     """第 n 年的可用容量；超过质保年限返回 0（寿命结束）。"""
@@ -61,9 +75,9 @@ out = ["# 手算结果（第 3 步）", "",
        f"- 报价用参考价，**已扣补贴**，所以净成本 = 报价，下表里的 STC 张数只作核对",
        f"- 电池质保：{W['warranty_years']} 年，末期保留 {W['end_of_warranty_retention']:.0%}，"
        f"吞吐上限每 kWh 可用容量 {W['throughput_mwh_per_usable_kwh']} MWh",
-       "- 电池按「默认充满」的稳定状态计算：B = min(E, C_n, L_night/η)，B_out = B×η",
+       "- 电池按「默认充满」的稳定状态计算：B_out = min(E×η, C_n, L_night)，B = B_out/η（C 为放电端可用容量）",
        f"- 第 n 年容量 C_n = C×[1 − {1-W['end_of_warranty_retention']:.1f}×(n−1)/{W['warranty_years']}]，"
-       f"超过质保年限或吞吐上限后电池收益为 0",
+       f"超过质保年限或吞吐上限后不计电池收益（保守情景，不代表电池报废）；吞吐上限年中触发时按剩余额度折算",
        "- 逐年计算：第 n 年发电 G×(1−衰减)^(n−1)，电价 p×(1+涨幅)^(n−1)，上网电价不变", ""]
 
 for c in CASES:
@@ -80,8 +94,7 @@ for c in CASES:
     else:  # 只加电池：只算电池带来的增量
         S1 = 365 * (B_out * p0 - B * f)
         N_panel = 0
-    tier = min(Cc, 14) + 0.6 * min(max(Cc - 14, 0), 14) + 0.15 * min(max(Cc - 28, 0), 22)
-    N_batt = math.floor(F * tier) if Cc > 0 else 0
+    N_batt, tier = battery_stcs(Cc, c["install"])
     net = c["quote"]
     limit_kwh = Cc * W["throughput_mwh_per_usable_kwh"] * 1000
     util = B / Cc if Cc > 0 else None
@@ -93,9 +106,13 @@ for c in CASES:
             Gn = G * (1 - deg) ** (n - 1); pn = p0 * (1 + esc) ** (n - 1)
             Cn = capacity(Cc, n) if cum_out < limit_kwh else 0.0
             if Cn > 0: life = n
+            saving = lambda d, b, bo, x: (365 * ((d + bo) * pn + x * f) if c["mode"] == "solar"
+                                          else 365 * (bo * pn - b * f))
             d, e, b, bo, x = daily(Gn, L_day, L_night, Cn, eta)
-            cum_out += 365 * bo
-            s = 365 * ((d + bo) * pn + x * f) if c["mode"] == "solar" else 365 * (bo * pn - b * f)
+            k = min(1.0, (limit_kwh - cum_out) / (365 * bo)) if bo > 0 else 0.0  # 当年电池可用的比例
+            d0, e0, b0, bo0, x0 = daily(Gn, L_day, L_night, 0.0, eta)
+            s = k * saving(d, b, bo, x) + (1 - k) * saving(d0, b0, bo0, x0)
+            cum_out += k * 365 * bo
             cum += s
             if payback is None and cum >= net: payback = n
             if n == 10: cum10 = cum
@@ -109,26 +126,36 @@ for c in CASES:
             f"| G | P×R×1000/365 | {fmt(G)} kWh/天 |",
             f"| D | min(G, L_day) | {fmt(D)} |",
             f"| E | G−D | {fmt(E)} |",
-            f"| B | min(E, C, L_night/η) | {fmt(B)} |",
-            f"| B_out | B×η | {fmt(B_out)} |",
+            f"| B_out | min(E×η, C, L_night) | {fmt(B_out)} |",
+            f"| B | B_out/η | {fmt(B)} |",
             f"| X | E−B | {fmt(X)} |",
             (f"| S（第 1 年） | 365×[(D+B_out)×p + X×f] | ${fmt(S1,2)} |" if c["mode"] == "solar"
              else f"| S（第 1 年，增量） | 365×(B_out×p − B×f) | ${fmt(S1,2)} |"),
             f"| 电池利用率 | B/C | {util:.1%} |" if util is not None else "| 电池利用率 | 无电池 | — |",
             f"| 吞吐上限 | C×{W['throughput_mwh_per_usable_kwh']} MWh | {limit_kwh/1000:,.1f} MWh |",
             f"| N_panel（核对用） | ⌊P×R×{Y}⌋ | {N_panel} 张 |",
-            f"| N_batt（核对用） | ⌊{F}×{fmt(tier,2)}⌋ | {N_batt} 张 |",
+            f"| N_batt（核对用） | ⌊{F}×{fmt(tier,2)}⌋（2026-05-01 起三档，最多 50 kWh） | {N_batt} 张 |",
             f"| 净成本 | 报价已扣补贴 | ${net:,.2f} |", "",
-            "| 电价年涨幅 | 回本年限 | 电池寿命 | 10 年累计省钱 | 10 年净收益 | 电池累计放电 |",
+            "| 电价年涨幅 | 回本年限 | 电池质保期 | 10 年累计省钱 | 10 年净收益（未计维护及资金成本） | 电池累计放电 |",
             "| --- | --- | --- | --- | --- | --- |"]
     for e, pb, c10, n10, life, co in rows:
         if Cc > 0 and (pb is None or pb > life):
-            pbs = "电池寿命内回不了本" + (f"（第 {pb} 年）" if pb else "")
+            pbs = "按当前假设，质保期内未回本" + (f"（第 {pb} 年）" if pb else "（质保期后不计电池收益）")
         else:
             pbs = str(pb) if pb else "30 年内不回本"
         out.append(f"| {int(e*100)}% | {pbs} | {f'{life} 年' if Cc > 0 else '—'} | ${c10:,.2f} | ${n10:,.2f} | "
                    f"{f'{co/1000:,.1f} MWh' if Cc > 0 else '—'} |")
     out.append("")
+
+out += ["## 电池 STC 边界核对（第 5 步边界测试用）", "",
+        "| 可用容量 | 安装日期 | 计入容量 | STC 张数 | 说明 |", "| --- | --- | --- | --- | --- |"]
+for Cb, dt, why in [(20, "2026-04-30", "分档生效前，全部容量按 100%"), (20, "2026-05-01", "分档生效当天"),
+                    (14, "2026-11-01", "正好第一档上限"), (28, "2026-11-01", "正好第二档上限"),
+                    (50, "2026-11-01", "正好 50 kWh 上限"), (60, "2026-11-01", "超过 50 kWh 的部分不计"),
+                    (20, "2025-06-30", "早于 2025-07-01，不适用"), (20, "2031-01-01", "晚于系数表，不适用")]:
+    n_, eff_ = battery_stcs(Cb, dt)
+    out.append(f"| {Cb} kWh | {dt} | {fmt(eff_, 2)} kWh | {n_} 张 | {why} |")
+out.append("")
 
 (ROOT / "tests/fixtures/hand-calc.md").write_text("\n".join(out))
 print("\n".join(out))
