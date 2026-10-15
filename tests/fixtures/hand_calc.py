@@ -52,11 +52,11 @@ def capacity(C, n):
 
 CASES = [
     dict(name="用例 1：墨尔本，6.6 kW，无电池，上班族", postcode=3000, P=6.6, C=0, share="away",
-         install="2026-11-01", quote=Q["solar_6_6kw_dollars"], mode="solar"),
+         install="2026-11-01", solar_quote=Q["solar_6_6kw_dollars"], battery_quote=0, mode="solar"),
     dict(name="用例 2：墨尔本，6.6 kW + 10 kWh 电池，基本在家", postcode=3000, P=6.6, C=10, share="mostly_home",
-         install="2026-11-01", quote=Q["solar_6_6kw_dollars"] + Q["battery_10kwh_dollars"], mode="solar"),
+         install="2026-11-01", solar_quote=Q["solar_6_6kw_dollars"], battery_quote=Q["battery_10kwh_dollars"], mode="solar"),
     dict(name="用例 3：已有 6.6 kW 太阳能，只加 20 kWh 电池，部分在家", postcode=3000, P=6.6, C=20, share="partly_home",
-         install="2026-11-01", quote=Q["battery_20kwh_dollars"], mode="battery_only"),
+         install="2026-11-01", solar_quote=0, battery_quote=Q["battery_20kwh_dollars"], mode="battery_only"),
 ]
 FIT = 5.0  # 测试输入：模拟用户照电费单填的上网电价（c/kWh），不是默认值（默认是 0）
 p0 = defaults["vdo_flat_2026_27"][defaults["default_distributor"]]["usage_c_per_kwh"] / 100
@@ -80,13 +80,55 @@ out = ["# 手算结果（第 3 步）", "",
        f"超过质保年限或吞吐上限后不计电池收益（保守情景，不代表电池报废）；吞吐上限年中触发时按剩余额度折算",
        "- 逐年计算：第 n 年发电 G×(1−衰减)^(n−1)，电价 p×(1+涨幅)^(n−1)，上网电价不变", ""]
 
+EL = defaults["battery_expected_life"]["lithium_ion_years_max"]
+WY = W["warranty_years"]
+
+def simulate(c, esc, life_years, fit, C=None):
+    """逐年计算。返回 (回本年份或 None, 10 年累计省钱, 电池计收益的年数, 电池累计放电 kWh, 净成本, 逐年累计省钱)。"""
+    Cc = c["C"] if C is None else C
+    net = c["solar_quote"] + (c["battery_quote"] if Cc > 0 else 0)
+    z = zone_of(c["postcode"]); R = zones["zone_ratings"][str(z)]
+    L = annual / 365; L_day = L * A["daytime_share"][c["share"]]; L_night = L - L_day
+    G = c["P"] * R * 1000 / 365
+    limit_kwh = Cc * W["throughput_mwh_per_usable_kwh"] * 1000
+    fr = fit / 100
+    cum, cum_out, payback, cum10, years, cums = 0.0, 0.0, None, None, 0, []
+    for n in range(1, 31):
+        Gn = G * (1 - deg) ** (n - 1); pn = p0 * (1 + esc) ** (n - 1)
+        Cn = 0.0
+        if Cc > 0 and n <= life_years and cum_out < limit_kwh:
+            Cn = max(0.0, Cc * (1 - (1 - W["end_of_warranty_retention"]) * (n - 1) / WY))
+        saving = lambda d, b, bo, x: (365 * ((d + bo) * pn + x * fr) if c["mode"] == "solar"
+                                      else 365 * (bo * pn - b * fr))
+        d, e, b, bo, x = daily(Gn, L_day, L_night, Cn, eta)
+        k = min(1.0, (limit_kwh - cum_out) / (365 * bo)) if bo > 0 else 0.0  # 当年电池可用的比例
+        if k > 0: years = n
+        d0, e0, b0, bo0, x0 = daily(Gn, L_day, L_night, 0.0, eta)
+        cum += k * saving(d, b, bo, x) + (1 - k) * saving(d0, b0, bo0, x0)
+        cum_out += k * 365 * bo
+        if payback is None and cum >= net: payback = n
+        if n == 10: cum10 = cum
+        cums.append(cum)
+    return payback, cum10, years, cum_out, net, cums
+
+def incremental_payback(c, esc, life_years, fit):
+    """电池增量回本：逐年比较有电池和没电池的累计省钱差，第一次 ≥ 电池成本的年份。"""
+    w_ = simulate(c, esc, life_years, fit)[5]
+    o_ = simulate(c, esc, life_years, fit, C=0)[5] if c["mode"] == "solar" else [0.0] * 30
+    return next((i + 1 for i in range(30) if w_[i] - o_[i] >= c["battery_quote"]), None)
+
+def pb_text(pb, years, has_batt):
+    if has_batt and (pb is None or pb > years):
+        return f"按当前假设，电池计收益的 {years} 年内未回本" + (f"（第 {pb} 年）" if pb else "")
+    return f"第 {pb} 年" if pb else "30 年内不回本"
+
 for c in CASES:
     z = zone_of(c["postcode"]); R = zones["zone_ratings"][str(z)]
     year = int(c["install"][:4]); Y = zones["deeming_years_by_install_year"][str(year)]
     F = battery_factor(c["install"])
     L = annual / 365; L_day = L * A["daytime_share"][c["share"]]; L_night = L - L_day
     G = c["P"] * R * 1000 / 365
-    Cc = c["C"]
+    Cc = c["C"]; has_b = Cc > 0
     D, E, B, B_out, X = daily(G, L_day, L_night, Cc, eta)
     if c["mode"] == "solar":
         S1 = 365 * ((D + B_out) * p0 + X * f)
@@ -95,32 +137,13 @@ for c in CASES:
         S1 = 365 * (B_out * p0 - B * f)
         N_panel = 0
     N_batt, tier = battery_stcs(Cc, c["install"])
-    net = c["quote"]
+    net = simulate(c, 0, WY, FIT)[4]
     limit_kwh = Cc * W["throughput_mwh_per_usable_kwh"] * 1000
-    util = B / Cc if Cc > 0 else None
-
-    rows = []
-    for esc in A["price_escalation_scenarios"]:
-        cum, cum_out, payback, cum10, life = 0.0, 0.0, None, None, 0
-        for n in range(1, 31):
-            Gn = G * (1 - deg) ** (n - 1); pn = p0 * (1 + esc) ** (n - 1)
-            Cn = capacity(Cc, n) if cum_out < limit_kwh else 0.0
-            if Cn > 0: life = n
-            saving = lambda d, b, bo, x: (365 * ((d + bo) * pn + x * f) if c["mode"] == "solar"
-                                          else 365 * (bo * pn - b * f))
-            d, e, b, bo, x = daily(Gn, L_day, L_night, Cn, eta)
-            k = min(1.0, (limit_kwh - cum_out) / (365 * bo)) if bo > 0 else 0.0  # 当年电池可用的比例
-            d0, e0, b0, bo0, x0 = daily(Gn, L_day, L_night, 0.0, eta)
-            s = k * saving(d, b, bo, x) + (1 - k) * saving(d0, b0, bo0, x0)
-            cum_out += k * 365 * bo
-            cum += s
-            if payback is None and cum >= net: payback = n
-            if n == 10: cum10 = cum
-        rows.append((esc, payback, cum10, cum10 - net, life, cum_out))
+    util = B / Cc if has_b else None
 
     out += [f"## {c['name']}", "",
             f"输入：邮编 {c['postcode']} → 分区 {z}，R = {R}；系统 P = {c['P']} kW；电池 C = {Cc} kWh；"
-            f"白天用电占比 {A['daytime_share'][c['share']]}；安装 {c['install']}；报价（已扣补贴）${c['quote']:,}", "",
+            f"白天用电占比 {A['daytime_share'][c['share']]}；安装 {c['install']}；报价（已扣补贴）${net:,}", "",
             "| 中间值（第 1 年） | 公式 | 结果 |", "| --- | --- | --- |",
             f"| L_day / L_night | L×占比 / L−L_day | {fmt(L_day)} / {fmt(L_night)} kWh |",
             f"| G | P×R×1000/365 | {fmt(G)} kWh/天 |",
@@ -131,21 +154,51 @@ for c in CASES:
             f"| X | E−B | {fmt(X)} |",
             (f"| S（第 1 年） | 365×[(D+B_out)×p + X×f] | ${fmt(S1,2)} |" if c["mode"] == "solar"
              else f"| S（第 1 年，增量） | 365×(B_out×p − B×f) | ${fmt(S1,2)} |"),
-            f"| 电池利用率 | B/C | {util:.1%} |" if util is not None else "| 电池利用率 | 无电池 | — |",
+            f"| 电池利用率 | B/C | {util:.1%} |" if has_b else "| 电池利用率 | 无电池 | — |",
             f"| 吞吐上限 | C×{W['throughput_mwh_per_usable_kwh']} MWh | {limit_kwh/1000:,.1f} MWh |",
             f"| N_panel（核对用） | ⌊P×R×{Y}⌋ | {N_panel} 张 |",
             f"| N_batt（核对用） | ⌊{F}×{fmt(tier,2)}⌋（2026-05-01 起三档，最多 50 kWh） | {N_batt} 张 |",
-            f"| 净成本 | 报价已扣补贴 | ${net:,.2f} |", "",
-            "| 电价年涨幅 | 回本年限 | 电池质保期 | 10 年累计省钱 | 10 年净收益（未计维护及资金成本） | 电池累计放电 |",
-            "| --- | --- | --- | --- | --- | --- |"]
-    for e, pb, c10, n10, life, co in rows:
-        if Cc > 0 and (pb is None or pb > life):
-            pbs = "按当前假设，质保期内未回本" + (f"（第 {pb} 年）" if pb else "（质保期后不计电池收益）")
-        else:
-            pbs = str(pb) if pb else "30 年内不回本"
-        out.append(f"| {int(e*100)}% | {pbs} | {f'{life} 年' if Cc > 0 else '—'} | ${c10:,.2f} | ${n10:,.2f} | "
-                   f"{f'{co/1000:,.1f} MWh' if Cc > 0 else '—'} |")
+            f"| 净成本 | 报价已扣补贴 | ${net:,.2f} |", ""]
+
+    bases = [("只算质保期", WY)] + ([(f"按预期寿命 {EL} 年", EL)] if has_b else [])
+    for label, life in bases:
+        out += [f"**{label}**（上网电价 {FIT} c/kWh）" if has_b else f"**结果**（上网电价 {FIT} c/kWh）", "",
+                "| 电价年涨幅 | 回本 | 电池计收益年数 | 10 年累计省钱 | 10 年净收益（未计维护及资金成本） | 电池累计放电 |",
+                "| --- | --- | --- | --- | --- | --- |"]
+        for esc in A["price_escalation_scenarios"]:
+            pb, c10, yrs, co, nt, _ = simulate(c, esc, life, FIT)
+            out.append(f"| {int(esc*100)}% | {pb_text(pb, yrs, has_b)} | {f'{yrs} 年' if has_b else '—'} | "
+                       f"${c10:,.2f} | ${c10-nt:,.2f} | {f'{co/1000:,.1f} MWh' if has_b else '—'} |")
+        out.append("")
+
+    out += [f"**上网电价为 0 时的对比**（只算质保期）", "",
+            "| 电价年涨幅 | 回本：{0} c → 0 c | 10 年净收益：{0} c → 0 c |".format(FIT), "| --- | --- | --- |"]
+    for esc in A["price_escalation_scenarios"]:
+        a_ = simulate(c, esc, WY, FIT); b_ = simulate(c, esc, WY, 0.0)
+        out.append(f"| {int(esc*100)}% | {pb_text(a_[0], a_[2], has_b)} → {pb_text(b_[0], b_[2], has_b)} | "
+                   f"${a_[1]-a_[4]:,.2f} → ${b_[1]-b_[4]:,.2f} |")
     out.append("")
+
+    if has_b:
+        # 电池增量：同一家庭、同一太阳能条件下，有电池减去没电池（只加电池的用例本身就是增量）
+        out += ["**电池部分单独看**（同一家庭、同样的太阳能，有电池 − 没电池）", "",
+                "| 计算口径 | 电价年涨幅 | 电池成本 | 电池带来的 10 年增量省钱 | 增量回本 | 每放 1 度电的电池成本 | 每度电替你省的钱（第 1 年） |",
+                "| --- | --- | --- | --- | --- | --- | --- |"]
+        value_per_kwh = p0 - f / eta
+        for label, life in bases:
+            for esc in A["price_escalation_scenarios"]:
+                cost = c["battery_quote"]
+                if c["mode"] == "solar":
+                    w_ = simulate(c, esc, life, FIT); o_ = simulate(c, esc, life, FIT, C=0)
+                    inc10 = w_[1] - o_[1]
+                    co, yrs = w_[3], w_[2]
+                else:
+                    w_ = simulate(c, esc, life, FIT); inc10 = w_[1]; co, yrs = w_[3], w_[2]
+                inc_pb = incremental_payback(c, esc, life, FIT)
+                out.append(f"| {label} | {int(esc*100)}% | ${cost:,} | ${inc10:,.2f} | {pb_text(inc_pb, yrs, True)} | "
+                           f"${cost/co:,.3f}/kWh | ${value_per_kwh:,.3f}/kWh |")
+        out += ["", f"说明：「每放 1 度电的电池成本」= 电池成本 ÷ 计收益期间累计放电量，思路同 HOMER 的电池损耗成本；"
+                f"「每度电替你省的钱」= 买电电价 − 上网电价/η（放 1 度电要少卖 1/η 度）。前者高于后者时，电池单独看不划算。", ""]
 
 out += ["## 电池 STC 边界核对（第 5 步边界测试用）", "",
         "| 可用容量 | 安装日期 | 计入容量 | STC 张数 | 说明 |", "| --- | --- | --- | --- | --- |"]

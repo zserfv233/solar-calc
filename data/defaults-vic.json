@@ -76,6 +76,14 @@
       "warranty_years": 10,
       "end_of_warranty_retention": 0.6,
       "throughput_mwh_per_usable_kwh": 3.0
+    },
+    "battery_expected_life": {
+      "source": "https://www.energy.gov.au/solar/use-your-solar-system/replace-and-recycle-your-solar-system",
+      "source_note": "澳洲政府 energy.gov.au：锂电池寿命 10–15 年。网站同时展示「只算质保期」和「按预期寿命 15 年」两种结果。质保期后容量按质保期内的同一速度继续线性衰减，是假设。",
+      "last_checked": "2026-10-16",
+      "checked_by": "ai",
+      "lithium_ion_years_min": 10,
+      "lithium_ion_years_max": 15
     }
   }
 }

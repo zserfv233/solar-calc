@@ -93,6 +93,11 @@ export const defaultsVicSchema = z.object({
         end_of_warranty_retention: fraction,
         throughput_mwh_per_usable_kwh: z.number().positive().max(10),
       }),
+      battery_expected_life: z.object({
+        ...meta,
+        lithium_ion_years_min: z.number().int().min(1).max(30),
+        lithium_ion_years_max: z.number().int().min(1).max(30),
+      }),
       assumptions_from_plan: z.object({
         daytime_share: z.object({ away: fraction, partly_home: fraction, mostly_home: fraction }),
         solar_size_kw: z.number().positive(),
