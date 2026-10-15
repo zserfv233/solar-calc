@@ -110,3 +110,21 @@ export const defaultsVicSchema = z.object({
     })
     .refine((v) => v.default_distributor in v.vdo_flat_2026_27, '默认配电区必须在电价表里'),
 });
+
+const seasonName = z.enum(['summer', 'autumn', 'winter', 'spring']);
+
+export const seasonalVicSchema = z.object({
+  ...meta,
+  values: z.object({
+    seasons: z
+      .array(z.object({ name: seasonName, months: z.array(z.number().int().min(1).max(12)).length(3) }))
+      .length(4),
+    days_in_month: z.array(z.number().int().min(28).max(31)).length(12),
+    solar_mj_per_m2_day_by_zone: z.partialRecord(
+      z.enum(['1', '2', '3', '4']),
+      z.object({ station: z.string(), monthly: z.array(z.number().min(0).max(40)).length(12) }),
+    ),
+    load_kwh_by_season: z.record(seasonName, z.number().positive()),
+  }),
+});
+

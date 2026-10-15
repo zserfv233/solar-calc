@@ -7,7 +7,10 @@
 - 第 1 层：电池默认每天充满，按稳定状态计算。C 是「可用容量」，指电池能放出来给家里用的电量（放电端），
   所以 B_out = min(E×η, C_n, L_night)，充进去的电 B = B_out/η（2026-10-16 按核查报告修正测量端）。
   头天晚上没用完的电留在电池里，第二天只需补充用掉的部分。
-- 第 2 层：电池利用率 = B / C（第 1 年）。
+- 第 2 层：电池利用率 = 全年平均每天放电 B_out ÷ C（第 1 年；2026-10-16 改为放电端，避免超过 100%）。
+- 四季各一个平均日（2026-10-16 用户确认 v0.1 先做这一种）：全年发电仍按 CER 分区系数 P×R×1000，
+  按 BOM 月平均日照拆到四季；年用电按 AER 四季用电拆到四季。每季按平均一天算 D、E、B_out、B、X，
+  再乘以该季天数加总成全年。
 - 第 3 层：只计算质保期内的电池收益（保守情景，质保到期不等于电池报废）。质保期 = 质保年限与吞吐上限先到者；
   吞吐上限在年中触发时，按当年剩余额度折算电池收益。容量从 100% 线性衰减（第 n 年取年初容量）。
   质保期后电池不再计收益（太阳能板继续发电）。
@@ -16,8 +19,8 @@ import json, math, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 load = lambda n: json.loads((ROOT / "data" / n).read_text())["values"]
-postcodes, zones, battery, defaults = (load(n) for n in
-    ["postcodes-vic.json", "stc-zones.json", "battery-rebate.json", "defaults-vic.json"])
+postcodes, zones, battery, defaults, seasonal = (load(n) for n in
+    ["postcodes-vic.json", "stc-zones.json", "battery-rebate.json", "defaults-vic.json", "seasonal-vic.json"])
 A, Q, W = defaults["assumptions_from_plan"], defaults["typical_quotes_after_rebate"], defaults["battery_warranty"]
 
 def zone_of(pc):
@@ -31,6 +34,31 @@ def daily(G, L_day, L_night, C, eta):
     B_out = min(E * eta, C, L_night) if C > 0 else 0.0
     B = B_out / eta; X = E - B
     return D, E, B, B_out, X
+
+SEASON_ZH = {"summer": "夏", "autumn": "秋", "winter": "冬", "spring": "春"}
+
+def season_split(z):
+    """每季的 (名称, 天数, 发电占全年比例, 用电占全年比例)。"""
+    mj, dm = seasonal["solar_mj_per_m2_day_by_zone"][str(z)]["monthly"], seasonal["days_in_month"]
+    total_mj = sum(mj[m] * dm[m] for m in range(12))
+    total_load = sum(seasonal["load_kwh_by_season"].values())
+    res = []
+    for s_ in seasonal["seasons"]:
+        ms = [m - 1 for m in s_["months"]]
+        res.append((s_["name"], sum(dm[m] for m in ms), sum(mj[m] * dm[m] for m in ms) / total_mj,
+                    seasonal["load_kwh_by_season"][s_["name"]] / total_load))
+    return res
+
+def year_flows(z, G_year, share, C, eta):
+    """一年的电量（kWh/年）：四季各一个平均日，乘天数加总。返回 (D, B, B_out, X, 每季明细)。"""
+    tot = [0.0, 0.0, 0.0, 0.0]; rows = []
+    for name, days, gs, ls in season_split(z):
+        G = G_year * gs / days; L = annual * ls / days
+        L_day = L * share; L_night = L - L_day
+        D, E, B, B_out, X = daily(G, L_day, L_night, C, eta)
+        rows.append((name, days, G, L_day, L_night, D, E, B_out, B, X))
+        for i, v in enumerate((D, B, B_out, X)): tot[i] += days * v
+    return (*tot, rows)
 
 def battery_stcs(C, date):
     """电池 STC 张数：资格日期之外为 0；2026-05-01 前按全部可用容量计，之后按三档；最多计 50 kWh。"""
@@ -70,12 +98,12 @@ out = ["# 手算结果（第 3 步）", "",
        "## 公共输入", "",
        f"- 买电电价 p = {p0*100:.2f} c/kWh（{defaults['default_distributor']}，VDO 2026–27）",
        f"- 上网电价 f = {FIT} c/kWh（**测试输入**，模拟用户照电费单填写；网站默认是 0）",
-       f"- 年用电量 = {annual} kWh，每天 L = {fmt(annual/365)} kWh",
+       f"- 年用电量 = {annual} kWh，按 AER 四季用电比例拆到夏/秋/冬/春；全年发电按 BOM 月平均日照拆到四季",
        f"- 充放电效率 η = {eta}，面板年衰减 = {deg}，STC 单价 = ${defaults['stc_price_dollars']}",
        f"- 报价用参考价，**已扣补贴**，所以净成本 = 报价，下表里的 STC 张数只作核对",
        f"- 电池质保：{W['warranty_years']} 年，末期保留 {W['end_of_warranty_retention']:.0%}，"
        f"吞吐上限每 kWh 可用容量 {W['throughput_mwh_per_usable_kwh']} MWh",
-       "- 电池按「默认充满」的稳定状态计算：B_out = min(E×η, C_n, L_night)，B = B_out/η（C 为放电端可用容量）",
+       "- 每季按平均一天计算，再乘该季天数加总；电池按「默认充满」的稳定状态计算：B_out = min(E×η, C_n, L_night)，B = B_out/η（C 为放电端可用容量）",
        f"- 第 n 年容量 C_n = C×[1 − {1-W['end_of_warranty_retention']:.1f}×(n−1)/{W['warranty_years']}]，"
        f"超过质保年限或吞吐上限后不计电池收益（保守情景，不代表电池报废）；吞吐上限年中触发时按剩余额度折算",
        "- 逐年计算：第 n 年发电 G×(1−衰减)^(n−1)，电价 p×(1+涨幅)^(n−1)，上网电价不变", ""]
@@ -88,24 +116,24 @@ def simulate(c, esc, life_years, fit, C=None):
     Cc = c["C"] if C is None else C
     net = c["solar_quote"] + (c["battery_quote"] if Cc > 0 else 0)
     z = zone_of(c["postcode"]); R = zones["zone_ratings"][str(z)]
-    L = annual / 365; L_day = L * A["daytime_share"][c["share"]]; L_night = L - L_day
-    G = c["P"] * R * 1000 / 365
+    share = A["daytime_share"][c["share"]]
+    G_year = c["P"] * R * 1000
     limit_kwh = Cc * W["throughput_mwh_per_usable_kwh"] * 1000
     fr = fit / 100
     cum, cum_out, payback, cum10, years, cums = 0.0, 0.0, None, None, 0, []
     for n in range(1, 31):
-        Gn = G * (1 - deg) ** (n - 1); pn = p0 * (1 + esc) ** (n - 1)
+        Gn = G_year * (1 - deg) ** (n - 1); pn = p0 * (1 + esc) ** (n - 1)
         Cn = 0.0
         if Cc > 0 and n <= life_years and cum_out < limit_kwh:
             Cn = max(0.0, Cc * (1 - (1 - W["end_of_warranty_retention"]) * (n - 1) / WY))
-        saving = lambda d, b, bo, x: (365 * ((d + bo) * pn + x * fr) if c["mode"] == "solar"
-                                      else 365 * (bo * pn - b * fr))
-        d, e, b, bo, x = daily(Gn, L_day, L_night, Cn, eta)
-        k = min(1.0, (limit_kwh - cum_out) / (365 * bo)) if bo > 0 else 0.0  # 当年电池可用的比例
+        saving = lambda d, b, bo, x: ((d + bo) * pn + x * fr if c["mode"] == "solar"
+                                      else bo * pn - b * fr)
+        d, b, bo, x, _ = year_flows(z, Gn, share, Cn, eta)
+        k = min(1.0, (limit_kwh - cum_out) / bo) if bo > 0 else 0.0  # 当年电池可用的比例
         if k > 0: years = n
-        d0, e0, b0, bo0, x0 = daily(Gn, L_day, L_night, 0.0, eta)
+        d0, b0, bo0, x0, _ = year_flows(z, Gn, share, 0.0, eta)
         cum += k * saving(d, b, bo, x) + (1 - k) * saving(d0, b0, bo0, x0)
-        cum_out += k * 365 * bo
+        cum_out += k * bo
         if payback is None and cum >= net: payback = n
         if n == 10: cum10 = cum
         cums.append(cum)
@@ -126,35 +154,37 @@ for c in CASES:
     z = zone_of(c["postcode"]); R = zones["zone_ratings"][str(z)]
     year = int(c["install"][:4]); Y = zones["deeming_years_by_install_year"][str(year)]
     F = battery_factor(c["install"])
-    L = annual / 365; L_day = L * A["daytime_share"][c["share"]]; L_night = L - L_day
-    G = c["P"] * R * 1000 / 365
+    share = A["daytime_share"][c["share"]]
+    G_year = c["P"] * R * 1000
     Cc = c["C"]; has_b = Cc > 0
-    D, E, B, B_out, X = daily(G, L_day, L_night, Cc, eta)
+    D, B, B_out, X, rows = year_flows(z, G_year, share, Cc, eta)
     if c["mode"] == "solar":
-        S1 = 365 * ((D + B_out) * p0 + X * f)
+        S1 = (D + B_out) * p0 + X * f
         N_panel = math.floor(c["P"] * R * Y)
     else:  # 只加电池：只算电池带来的增量
-        S1 = 365 * (B_out * p0 - B * f)
+        S1 = B_out * p0 - B * f
         N_panel = 0
     N_batt, tier = battery_stcs(Cc, c["install"])
     net = simulate(c, 0, WY, FIT)[4]
     limit_kwh = Cc * W["throughput_mwh_per_usable_kwh"] * 1000
-    util = B / Cc if has_b else None
+    util = B_out / 365 / Cc if has_b else None
 
     out += [f"## {c['name']}", "",
             f"输入：邮编 {c['postcode']} → 分区 {z}，R = {R}；系统 P = {c['P']} kW；电池 C = {Cc} kWh；"
-            f"白天用电占比 {A['daytime_share'][c['share']]}；安装 {c['install']}；报价（已扣补贴）${net:,}", "",
-            "| 中间值（第 1 年） | 公式 | 结果 |", "| --- | --- | --- |",
-            f"| L_day / L_night | L×占比 / L−L_day | {fmt(L_day)} / {fmt(L_night)} kWh |",
-            f"| G | P×R×1000/365 | {fmt(G)} kWh/天 |",
-            f"| D | min(G, L_day) | {fmt(D)} |",
-            f"| E | G−D | {fmt(E)} |",
-            f"| B_out | min(E×η, C, L_night) | {fmt(B_out)} |",
-            f"| B | B_out/η | {fmt(B)} |",
-            f"| X | E−B | {fmt(X)} |",
-            (f"| S（第 1 年） | 365×[(D+B_out)×p + X×f] | ${fmt(S1,2)} |" if c["mode"] == "solar"
-             else f"| S（第 1 年，增量） | 365×(B_out×p − B×f) | ${fmt(S1,2)} |"),
-            f"| 电池利用率 | B/C | {util:.1%} |" if has_b else "| 电池利用率 | 无电池 | — |",
+            f"白天用电占比 {share}；安装 {c['install']}；报价（已扣补贴）${net:,}", "",
+            f"四季平均一天（第 1 年，kWh/天；全年发电 P×R×1000 = {G_year:,.1f} kWh）：", "",
+            "| 季节 | 天数 | G | L_day | L_night | D | E | B_out | B | X |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+    out += [f"| {SEASON_ZH[r[0]]} | {r[1]} | " + " | ".join(fmt(v, 2) for v in r[2:]) + " |" for r in rows]
+    out += ["",
+            "| 全年合计（第 1 年） | 公式 | 结果 |", "| --- | --- | --- |",
+            f"| D | Σ 天数×D | {fmt(D, 1)} kWh |",
+            f"| B_out | Σ 天数×B_out | {fmt(B_out, 1)} kWh |",
+            f"| B | Σ 天数×B | {fmt(B, 1)} kWh |",
+            f"| X | Σ 天数×X | {fmt(X, 1)} kWh |",
+            (f"| S（第 1 年） | (D+B_out)×p + X×f | ${fmt(S1,2)} |" if c["mode"] == "solar"
+             else f"| S（第 1 年，增量） | B_out×p − B×f | ${fmt(S1,2)} |"),
+            f"| 电池利用率 | (B_out/365)/C | {util:.1%} |" if has_b else "| 电池利用率 | 无电池 | — |",
             f"| 吞吐上限 | C×{W['throughput_mwh_per_usable_kwh']} MWh | {limit_kwh/1000:,.1f} MWh |",
             f"| N_panel（核对用） | ⌊P×R×{Y}⌋ | {N_panel} 张 |",
             f"| N_batt（核对用） | ⌊{F}×{fmt(tier,2)}⌋（2026-05-01 起三档，最多 50 kWh） | {N_batt} 张 |",

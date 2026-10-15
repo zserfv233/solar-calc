@@ -1,0 +1,24 @@
+{
+  "source": [
+    "https://www.bom.gov.au/climate/averages/tables/cw_086338_All.shtml",
+    "https://www.bom.gov.au/climate/averages/tables/cw_081123_All.shtml",
+    "https://www.aer.gov.au/system/files/Residential%20energy%20consumption%20benchmarks%20-%209%20December%202020_0.pdf"
+  ],
+  "source_note": "日照：澳洲气象局（BOM）月平均每日太阳辐照量（MJ/m²，1990–2026，37 年）。分区 4 用墨尔本 Olympic Park（086338），分区 3 用 Bendigo Airport（081123），只用来把全年发电按季节拆分，全年总发电量仍按 CER 分区系数计算。用的是水平面辐照，倾斜的屋顶面板季节差异会小一些，所以这样拆分对冬季发电偏保守。用电：AER 2020 基准 Table 17 气候区 6 三口之家的四季用电，只用来把用户的年用电量按季节拆分。季节按澳洲惯例：夏 12–2 月、秋 3–5 月、冬 6–8 月、春 9–11 月（AER 报告没有写明月份，这是假设）。",
+  "last_checked": "2026-10-16",
+  "checked_by": "ai",
+  "values": {
+    "seasons": [
+      { "name": "summer", "months": [12, 1, 2] },
+      { "name": "autumn", "months": [3, 4, 5] },
+      { "name": "winter", "months": [6, 7, 8] },
+      { "name": "spring", "months": [9, 10, 11] }
+    ],
+    "days_in_month": [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+    "solar_mj_per_m2_day_by_zone": {
+      "4": { "station": "Melbourne (Olympic Park) 086338", "monthly": [24.3, 21.1, 16.3, 11.2, 7.8, 6.4, 7.1, 9.9, 13.5, 17.9, 21.3, 24.1] },
+      "3": { "station": "Bendigo Airport 081123", "monthly": [26.9, 23.8, 18.9, 13.1, 9.0, 6.9, 7.6, 10.9, 15.1, 20.1, 24.0, 26.9] }
+    },
+    "load_kwh_by_season": { "summer": 1143, "autumn": 1165, "winter": 1606, "spring": 1163 }
+  }
+}

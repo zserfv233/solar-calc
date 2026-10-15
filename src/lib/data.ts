@@ -3,9 +3,17 @@ import postcodesRaw from '../../data/postcodes-vic.json';
 import stcZonesRaw from '../../data/stc-zones.json';
 import batteryRebateRaw from '../../data/battery-rebate.json';
 import defaultsVicRaw from '../../data/defaults-vic.json';
-import { batteryRebateSchema, defaultsVicSchema, postcodesSchema, stcZonesSchema } from './schema';
+import seasonalVicRaw from '../../data/seasonal-vic.json';
+import {
+  batteryRebateSchema,
+  defaultsVicSchema,
+  postcodesSchema,
+  seasonalVicSchema,
+  stcZonesSchema,
+} from './schema';
 
 export const postcodes = postcodesSchema.parse(postcodesRaw);
 export const stcZones = stcZonesSchema.parse(stcZonesRaw);
 export const batteryRebate = batteryRebateSchema.parse(batteryRebateRaw);
 export const defaultsVic = defaultsVicSchema.parse(defaultsVicRaw);
+export const seasonalVic = seasonalVicSchema.parse(seasonalVicRaw);
