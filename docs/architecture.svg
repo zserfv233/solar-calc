@@ -9,13 +9,14 @@
   <text x="480" y="34" text-anchor="middle" font-size="20" font-weight="600" fill="#111">solar-calc 架构：数字只有一个来源</text>
 
   <g font-size="14" fill="#111">
-    <rect x="20" y="80" width="160" height="150" rx="10" fill="#fff4e0" stroke="#d99a2b"/>
+    <rect x="20" y="70" width="160" height="180" rx="10" fill="#fff4e0" stroke="#d99a2b"/>
     <text x="100" y="106" text-anchor="middle" font-weight="600">data/*.json</text>
     <text x="100" y="134" text-anchor="middle" font-size="12">postcodes-vic</text>
     <text x="100" y="154" text-anchor="middle" font-size="12">stc-zones</text>
     <text x="100" y="174" text-anchor="middle" font-size="12">battery-rebate</text>
     <text x="100" y="194" text-anchor="middle" font-size="12">defaults-vic</text>
-    <text x="100" y="216" text-anchor="middle" font-size="11" fill="#555">每条带来源和核对日期</text>
+    <text x="100" y="214" text-anchor="middle" font-size="12">seasonal-vic.json</text>
+    <text x="100" y="236" text-anchor="middle" font-size="11" fill="#555">每条带来源和核对日期</text>
 
     <rect x="220" y="105" width="150" height="100" rx="10" fill="#e8f1ff" stroke="#3b78d8"/>
     <text x="295" y="140" text-anchor="middle" font-weight="600">schema.ts</text>

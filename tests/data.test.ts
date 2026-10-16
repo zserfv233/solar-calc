@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import defaultsVicRaw from '../data/defaults-vic.json';
 import postcodesRaw from '../data/postcodes-vic.json';
-import { defaultsVicSchema, postcodesSchema } from '../src/lib/schema';
+import batteryRaw from '../data/battery-rebate.json';
+import seasonalRaw from '../data/seasonal-vic.json';
+import { batteryRebateSchema, defaultsVicSchema, postcodesSchema, seasonalVicSchema } from '../src/lib/schema';
 import * as data from '../src/lib/data';
 
 describe('data/ 校验', () => {
@@ -31,6 +33,23 @@ describe('data/ 校验', () => {
     expect(defaultsVicSchema.safeParse(bad).success).toBe(false);
   });
 
+  it('低利用率提示阈值在 0–1 内合法，越界及非有限值会被拒绝', () => {
+    const withWarning = (threshold: number, source_note = '用户确认的提示阈值') => ({
+      ...defaultsVicRaw, values: { ...defaultsVicRaw.values, assumptions_from_plan: {
+        ...defaultsVicRaw.values.assumptions_from_plan,
+        battery_utilisation_warning: { threshold, source_note },
+      } },
+    });
+    for (const value of [0, 0.6, 1]) {
+      expect(defaultsVicSchema.safeParse(withWarning(value)).success).toBe(true);
+    }
+    for (const value of [-0.01, 1.01, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(defaultsVicSchema.safeParse(withWarning(value)).success).toBe(false);
+    }
+    expect(defaultsVicSchema.safeParse(withWarning(0.6, '')).success).toBe(false);
+    expect(defaultsVicSchema.safeParse(withWarning(0.6, '   ')).success).toBe(false);
+  });
+
   it('效率为 0、寿命下限大于上限、邮编区间重叠都会被拒绝', () => {
     const eff = structuredClone(defaultsVicRaw);
     eff.values.assumptions_from_plan.round_trip_efficiency = 0;
@@ -43,5 +62,61 @@ describe('data/ 校验', () => {
     const pc = structuredClone(postcodesRaw);
     pc.values.ranges.push({ ...pc.values.ranges[0], zone: 3 });
     expect(postcodesSchema.safeParse(pc).success).toBe(false);
+  });
+
+  it('human、ai 两种复核标记合法，未知标记拒绝', () => {
+    for (const checked_by of ['human', 'ai']) {
+      expect(defaultsVicSchema.safeParse({ ...defaultsVicRaw, checked_by }).success).toBe(true);
+    }
+    expect(defaultsVicSchema.safeParse({ ...defaultsVicRaw, checked_by: 'unknown' }).success).toBe(false);
+  });
+
+  it('邮编区间倒置、默认配电区不在电价表中会拒绝', () => {
+    const bad = structuredClone(postcodesRaw);
+    bad.values.ranges[0].from = bad.values.ranges[0].to + 1;
+    expect(postcodesSchema.safeParse(bad).success).toBe(false);
+    expect(defaultsVicSchema.safeParse({ ...defaultsVicRaw, values: {
+      ...defaultsVicRaw.values, default_distributor: 'toString',
+    } }).success).toBe(false);
+  });
+
+  it('电池系数的倒置、重叠日期和越界系数拒绝', () => {
+    const reversed = structuredClone(batteryRaw);
+    reversed.values.factor_periods[0].start = '2026-01-01';
+    expect(batteryRebateSchema.safeParse(reversed).success).toBe(false);
+    const overlap = structuredClone(batteryRaw);
+    overlap.values.factor_periods[1].start = overlap.values.factor_periods[0].end;
+    expect(batteryRebateSchema.safeParse(overlap).success).toBe(false);
+    const factor = structuredClone(batteryRaw);
+    factor.values.factor_periods[0].factor = -1;
+    expect(batteryRebateSchema.safeParse(factor).success).toBe(false);
+  });
+
+  it('电池容量档位倒置、重叠、断档、未覆盖补贴上限会拒绝', () => {
+    for (const change of [
+      (v: typeof batteryRaw.values) => { v.tiers[0].to_kwh = v.tiers[0].from_kwh; },
+      (v: typeof batteryRaw.values) => { v.tiers[1].from_kwh -= 1; },
+      (v: typeof batteryRaw.values) => { v.tiers[1].from_kwh += 1; },
+      (v: typeof batteryRaw.values) => { v.tiers.at(-1)!.to_kwh -= 1; },
+    ]) {
+      const bad = structuredClone(batteryRaw);
+      change(bad.values);
+      expect(batteryRebateSchema.safeParse(bad).success).toBe(false);
+    }
+  });
+
+  it('重复季节、重复月份、零日照权重及非平年天数会拒绝', () => {
+    const names = structuredClone(seasonalRaw);
+    names.values.seasons[1].name = names.values.seasons[0].name;
+    expect(seasonalVicSchema.safeParse(names).success).toBe(false);
+    const months = structuredClone(seasonalRaw);
+    months.values.seasons[1].months[0] = months.values.seasons[0].months[0];
+    expect(seasonalVicSchema.safeParse(months).success).toBe(false);
+    const sun = structuredClone(seasonalRaw);
+    sun.values.solar_mj_per_m2_day_by_zone['4'].monthly.fill(0);
+    expect(seasonalVicSchema.safeParse(sun).success).toBe(false);
+    const days = structuredClone(seasonalRaw);
+    days.values.days_in_month[1] = 29;
+    expect(seasonalVicSchema.safeParse(days).success).toBe(false);
   });
 });

@@ -5,7 +5,7 @@
     "https://www.esc.vic.gov.au/electricity-and-gas/electricity-and-gas-tariffs-and-benchmarks/minimum-feed-tariff",
     "https://www.ecovantage.com.au/features/market-update-9-october-2026/"
   ],
-  "source_note": "电价：ESC 维州默认电价（VDO）2026–27 住宅单一费率，含 GST，2026-07-01 至 2027-06-30 有效，按配电区不同。用电量：AER 2020 年住宅用电基准 Table 17，气候区 6（含墨尔本）3 口之家，四季相加 1,143+1,165+1,606+1,163=5,077 kWh。上网电价：ESC 页面写明 2025-07-01 起维州不再设最低上网电价。默认配电区取 5 个配电区用电价的中位数 Jemena（页面提供下拉框让用户选，2026-10-15 用户决定）。上网电价默认 0：维州没有官方最低值，取最保守的值，页面提示用户照电费单填写（2026-10-15 用户决定）。STC 单价 38 澳元：官方不公布市场价，取执行方案假设（安装商转给用户的价格通常略低于市场价），参考 Ecovantage 2026-10-07 市场成交价 39.90 澳元和 CER 清算所固定价 40 澳元（2026-10-15 用户决定）。",
+  "source_note": "电价：ESC 维州默认电价（VDO）2026–27 住宅单一费率，含 GST，2026-07-01 至 2027-06-30 有效，按配电区不同。用电量：AER 2020 年住宅用电基准 Table 17，气候区 6（含墨尔本）3 口之家，四季相加 1,143+1,165+1,606+1,163=5,077 kWh。上网电价：ESC 页面写明 2025-07-01 起维州不再设最低上网电价。默认配电区取 5 个配电区用电价的中位数 Jemena（页面提供下拉框让用户选，2026-10-15 用户决定）。上网电价默认 0：维州没有官方最低值，取最保守的值，页面提示用户照电费单填写（2026-10-15 用户决定）。STC 单价 38 澳元：官方不公布市场价，取执行方案假设（安装商转给用户的价格通常略低于市场价），参考 Ecovantage 2026-10-09 周报所述星期三成交价 39.90 澳元（按该周日期推定成交日为 2026-10-07，页面署名为 2026-10-12；证据见 docs/ecovantage-price-date.md）和 CER 清算所固定价 40 澳元（2026-10-15 用户决定）。",
   "last_checked": "2026-10-15",
   "checked_by": "human",
   "values": {
@@ -44,6 +44,10 @@
       "solar_size_kw": 6.6,
       "existing_solar_size_kw": 6.6,
       "battery_usable_kwh": 10,
+      "battery_utilisation_warning": {
+        "threshold": 0.6,
+        "source_note": "用户确认的方案假设：第 1 年全年平均每天放电量除以可用容量，低于 60% 时提示电池可能偏大；只陈述利用率，不代表经济最优容量，也不是官方政策或统计值。"
+      },
       "round_trip_efficiency": 0.9,
       "panel_degradation_per_year": 0.005,
       "price_escalation_scenarios": [
@@ -70,7 +74,7 @@
         "https://www.sigenergy.com/uploads/au_download/1779788087551504.pdf",
         "https://saegroup.com.au/wp-content/uploads/BYD-Battery-Box-Premium-HVS-HVM-Limited-Warranty-Letter-AU-v1.0.pdf"
       ],
-      "source_note": "三款常见电池的澳洲质保书。质保年限：三款都是 10 年。末期保留容量：Tesla 70%、Sigenergy 70%、BYD 60%，取 60%。吞吐上限：Tesla 用于太阳能自用时不限；Sigenergy BAT 10.0 可用 9.0 kWh、33.29 MWh（每 kWh 约 3.70 MWh）；BYD HVS 10.2 可用 10.24 kWh、30.82 MWh（每 kWh 约 3.01 MWh）。默认取每 kWh 可用容量 3.0 MWh，是保守假设，不代表任何一个品牌的实际参数。质保到期不等于电池报废：模型只计算质保期内的电池收益，是保守情景。",
+      "source_note": "三款常见电池的澳洲质保书。质保年限：三款都是 10 年。末期保留容量：Tesla 70%、Sigenergy 70%、BYD 60%，取 60%。吞吐上限：Tesla 用于太阳能自用时不限；Sigenergy BAT 10.0 可用 9.0 kWh、33.29 MWh（每 kWh 约 3.70 MWh）；BYD HVS 10.2 可用 10.24 kWh、30.82 MWh（每 kWh 约 3.01 MWh）。默认取每 kWh 可用容量 3.0 MWh，是保守假设，不代表任何一个品牌的实际参数。质保到期不等于电池报废：模型分别按质保期和预期寿命上端情景计电池收益，两种情景均受吞吐上限约束。",
       "last_checked": "2026-10-15",
       "checked_by": "human",
       "warranty_years": 10,
@@ -79,7 +83,7 @@
     },
     "battery_expected_life": {
       "source": "https://www.energy.gov.au/solar/use-your-solar-system/replace-and-recycle-your-solar-system",
-      "source_note": "澳洲政府 energy.gov.au：锂离子电池平均寿命 10–15 年。网站同时展示「只算质保期（10 年）」和「按预期寿命 15 年」两种结果；15 年是这个区间的上端情景，不是任何品牌的产品保证。两个假设：质保期后容量按质保期内的同一速度继续线性衰减；15 年情景仍沿用质保书里的吞吐上限（每 kWh 可用容量 3 MWh），到达后不再计电池收益，这是额外的保守假设，不是官方的物理寿命限额。",
+      "source_note": "澳洲政府 energy.gov.au：锂离子电池平均寿命 10–15 年。网站同时展示「按质保期计电池收益（10 年）」和「按预期寿命 15 年」两种结果；15 年是这个区间的上端情景，不是任何品牌的产品保证。两个假设：质保期后容量按质保期内的同一速度继续线性衰减；15 年情景仍沿用质保书里的吞吐上限（每 kWh 可用容量 3 MWh），到达后不再计电池收益，这是额外的保守假设，不是官方的物理寿命限额。",
       "last_checked": "2026-10-16",
       "checked_by": "human",
       "lithium_ion_years_min": 10,
