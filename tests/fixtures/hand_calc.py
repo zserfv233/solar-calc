@@ -286,5 +286,36 @@ for life in [WY, EL]:
         out.append(f"| {life} 年 | {int(esc*100)}% | " + ("30 年内未回本" if pb is None else f"第 {pb} 年") + " |")
 out.append("")
 
+out += ["## 2027–2031 半年节点 STC 核对", "",
+        "独立读取 data/ 的政策参数计算，不调用 calc.ts；输入为 6.6 kW 面板、20 kWh 可用容量电池、邮编 3000。",
+        "每年取 1 月 1 日和 7 月 1 日，共 10 个节点；2031 年已超出政策期，面板与电池 STC 均不适用（张数为 0）。", ""]
+stc_panel_kw, stc_battery_kwh, stc_postcode = 6.6, 20, 3000
+stc_zone = zone_of(stc_postcode)
+stc_rating = zones["zone_ratings"][str(stc_zone)]
+
+def panel_stcs(P, postcode, date):
+    """面板 STC：按安装年视同年限向下取整；政策表之外为 0。"""
+    years = zones["deeming_years_by_install_year"].get(date[:4], 0)
+    return math.floor(P * zones["zone_ratings"][str(zone_of(postcode))] * years)
+
+stc_effective_capacity = battery_stcs(stc_battery_kwh, "2027-01-01")[1]
+baseline = "2026-12-31"
+out += [f"邮编 {stc_postcode} → 分区 {stc_zone}，R = {stc_rating}。面板张数 = ⌊{stc_panel_kw}×R×视同年限⌋；"
+        f"电池分档计入容量为 {stc_effective_capacity:g} kWh，张数 = ⌊计入容量×当期系数⌋。", "",
+        f"切换前基线 {baseline}：面板 {panel_stcs(stc_panel_kw, stc_postcode, baseline)} 张，"
+        f"电池 {battery_stcs(stc_battery_kwh, baseline)[0]} 张。", "",
+        "| 安装日期 | 视同年限 | 电池系数 | 面板 STC（张） | 电池 STC（张） |",
+        "| --- | --- | --- | --- | --- |"]
+for year in range(2027, 2032):
+    for month in (1, 7):
+        date = f"{year}-{month:02d}-01"
+        years = zones["deeming_years_by_install_year"].get(str(year))
+        factor = next((p["factor"] for p in battery["factor_periods"] if p["start"] <= date <= p["end"]), None)
+        panels = panel_stcs(stc_panel_kw, stc_postcode, date)
+        batteries = battery_stcs(stc_battery_kwh, date)[0]
+        out.append(f"| {date} | {years if years is not None else '不适用'} | "
+                   f"{factor if factor is not None else '不适用'} | {panels} | {batteries} |")
+out.append("")
+
 (ROOT / "tests/fixtures/hand-calc.md").write_text("\n".join(out))
 print("\n".join(out))
