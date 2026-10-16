@@ -52,7 +52,7 @@ export const batteryRebateSchema = z.object({
           start: z.iso.date(),
           end: z.iso.date(),
           factor: z.number().min(0).max(10),
-        }),
+        }).refine((p) => p.start <= p.end, '系数时间段起点不能晚于终点'),
       )
       .min(1)
       .refine(noOverlap<{ start: string; end: string }>((p) => p.start, (p) => p.end), '系数时间段不能重叠'),
@@ -62,14 +62,16 @@ export const batteryRebateSchema = z.object({
           from_kwh: z.number().min(0),
           to_kwh: z.number().min(0),
           share: fraction,
-        }),
+        }).refine((t) => t.from_kwh < t.to_kwh, '容量档位必须有正的宽度'),
       )
-      .min(1),
+      .min(1)
+      .refine((tiers) => tiers.every((t, i) => t.from_kwh === (i === 0 ? 0 : tiers[i - 1].to_kwh)),
+        '容量档位必须从 0 开始连续排列，不得重叠或断档'),
     rounding: z.enum(['floor']),
     eligible_from: z.iso.date(),
     tiers_effective_from: z.iso.date(),
     stc_cap_usable_kwh: z.number().positive().max(100),
-  }),
+  }).refine((v) => v.tiers.at(-1)?.to_kwh === v.stc_cap_usable_kwh, '容量档位必须覆盖补贴容量上限'),
 });
 
 export const defaultsVicSchema = z.object({
@@ -110,12 +112,16 @@ export const defaultsVicSchema = z.object({
         solar_size_kw: z.number().positive(),
         existing_solar_size_kw: z.number().positive(),
         battery_usable_kwh: z.number().positive(),
+        battery_utilisation_warning: z.object({
+          threshold: fraction,
+          source_note: z.string().trim().min(1),
+        }),
         round_trip_efficiency: z.number().gt(0).max(1),
         panel_degradation_per_year: fraction,
         price_escalation_scenarios: z.array(fraction).min(1),
       }),
     })
-    .refine((v) => v.default_distributor in v.vdo_flat_2026_27, '默认配电区必须在电价表里'),
+    .refine((v) => Object.hasOwn(v.vdo_flat_2026_27, v.default_distributor), '默认配电区必须在电价表里'),
 });
 
 const seasonName = z.enum(['summer', 'autumn', 'winter', 'spring']);
@@ -125,11 +131,15 @@ export const seasonalVicSchema = z.object({
   values: z.object({
     seasons: z
       .array(z.object({ name: seasonName, months: z.array(z.number().int().min(1).max(12)).length(3) }))
-      .length(4),
-    days_in_month: z.array(z.number().int().min(28).max(31)).length(12),
+      .length(4)
+      .refine((seasons) => new Set(seasons.map((s) => s.name)).size === 4, '季节名称不能重复')
+      .refine((seasons) => new Set(seasons.flatMap((s) => s.months)).size === 12, '季节月份必须完整覆盖 12 个月且不重复'),
+    days_in_month: z.array(z.number().int().min(28).max(31)).length(12)
+      .refine((days) => days.reduce((a, b) => a + b, 0) === 365, '平均日模型使用平年 365 天'),
     solar_mj_per_m2_day_by_zone: z.partialRecord(
       z.enum(['1', '2', '3', '4']),
-      z.object({ station: z.string(), monthly: z.array(z.number().min(0).max(40)).length(12) }),
+      z.object({ station: z.string(), monthly: z.array(z.number().min(0).max(40)).length(12)
+        .refine((monthly) => monthly.some((v) => v > 0), '全年日照权重不能为零') }),
     ),
     load_kwh_by_season: z.record(seasonName, z.number().positive()),
   }),
