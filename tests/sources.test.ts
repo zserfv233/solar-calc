@@ -3,6 +3,11 @@ import { sourcesById } from '../src/lib/sources';
 import { defaultsVic, batteryRebate, seasonalVic } from '../src/lib/data';
 
 describe('命名来源与元数据归属', () => {
+  it('电池质保来源指向已有的 BYD 澳洲质保 PDF', () => {
+    const url = sourcesById().batteryWarranty.url;
+    expect(url).toBe('https://saegroup.com.au/wp-content/uploads/BYD-Battery-Box-Premium-HVS-HVM-Limited-Warranty-Letter-AU-v1.0.pdf');
+    expect(defaultsVic.values.battery_warranty.source).toContain(url);
+  });
   it('来源数组重排后每个 ID 仍指向相同的 URL 和日期', () => {
     const data = structuredClone({ defaults: defaultsVic, battery: batteryRebate, seasonal: seasonalVic });
     for (const meta of [data.defaults, data.battery, data.seasonal,

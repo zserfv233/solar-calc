@@ -25,7 +25,7 @@ export function sourcesById(data = documents) {
     stcPrice: entry('defaults-vic.json', d, 'www.ecovantage.com.au'),
     batteryPolicy: entry('battery-rebate.json', data.battery, 'cer.gov.au', 'calculate-small-scale-technology-certificate-entitlements'),
     seasonal: entry('seasonal-vic.json', data.seasonal, 'www.bom.gov.au', '086338'),
-    batteryWarranty: entry('defaults-vic.json/battery_warranty', values.battery_warranty, 'energylibrary.tesla.com'),
+    batteryWarranty: entry('defaults-vic.json/battery_warranty', values.battery_warranty, 'saegroup.com.au', 'BYD-Battery-Box-Premium-HVS-HVM-Limited-Warranty-Letter-AU-v1.0.pdf'),
     batteryLife: entry('defaults-vic.json/battery_expected_life', values.battery_expected_life, 'www.energy.gov.au'),
   };
 }
