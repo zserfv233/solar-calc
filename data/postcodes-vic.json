@@ -1,0 +1,36 @@
+{
+  "source": "https://cer.gov.au/document/postcode-zone-ratings-and-zones-solar-panel-systems",
+  "source_note": "CER《Postcode zone ratings and zones for solar (photovoltaic) systems》Table 1 第 37–61 项和第 136 项（As of 1 January 2020）。第 136 项是 7000–8999，这里只取维州的 8000–8999。",
+  "last_checked": "2026-10-15",
+  "checked_by": "human",
+  "values": {
+    "ranges": [
+      { "from": 3000, "to": 3035, "zone": 4 },
+      { "from": 3036, "to": 3038, "zone": 3 },
+      { "from": 3039, "to": 3044, "zone": 4 },
+      { "from": 3045, "to": 3045, "zone": 3 },
+      { "from": 3046, "to": 3046, "zone": 4 },
+      { "from": 3047, "to": 3049, "zone": 3 },
+      { "from": 3050, "to": 3058, "zone": 4 },
+      { "from": 3059, "to": 3059, "zone": 3 },
+      { "from": 3060, "to": 3060, "zone": 4 },
+      { "from": 3061, "to": 3064, "zone": 3 },
+      { "from": 3065, "to": 3074, "zone": 4 },
+      { "from": 3075, "to": 3076, "zone": 3 },
+      { "from": 3077, "to": 3098, "zone": 4 },
+      { "from": 3099, "to": 3099, "zone": 3 },
+      { "from": 3100, "to": 3292, "zone": 4 },
+      { "from": 3293, "to": 3302, "zone": 3 },
+      { "from": 3303, "to": 3308, "zone": 4 },
+      { "from": 3309, "to": 3319, "zone": 3 },
+      { "from": 3320, "to": 3333, "zone": 4 },
+      { "from": 3334, "to": 3337, "zone": 3 },
+      { "from": 3338, "to": 3339, "zone": 4 },
+      { "from": 3340, "to": 3758, "zone": 3 },
+      { "from": 3759, "to": 3760, "zone": 4 },
+      { "from": 3761, "to": 3764, "zone": 3 },
+      { "from": 3765, "to": 3999, "zone": 4 },
+      { "from": 8000, "to": 8999, "zone": 4 }
+    ]
+  }
+}
