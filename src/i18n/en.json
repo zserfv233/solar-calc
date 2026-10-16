@@ -111,5 +111,12 @@
   "seasonalSource": "BOM sunlight and AER seasonal usage",
   "batteryModelSource": "Battery warranty and life assumptions",
   "charge": "Battery charging",
-  "batteryLoss": "Battery round-trip losses"
+  "batteryLoss": "Battery round-trip losses",
+  "firstYearIncrementalSavings": "Estimated first-year incremental savings",
+  "feedInSource": "Feed-in tariff rules (ESC)",
+  "solarQuoteSource": "Reference solar quotes (Solar Choice)",
+  "batteryQuoteSource": "Reference battery quotes (Energy Matters)",
+  "stcPriceSource": "STC value reference (Ecovantage)",
+  "batteryPolicySource": "Battery rebate policy (CER)",
+  "batteryLifeSource": "Expected battery life (energy.gov.au)"
 }

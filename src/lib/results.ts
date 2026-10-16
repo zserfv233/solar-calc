@@ -18,6 +18,9 @@ export function paybackText(s: ScenarioResult, lang: Language, batteryOnly: bool
   if ((incremental || batteryOnly) && s.battery.status === 'no_discharge') return m('noDischarge');
   const year = incremental ? s.battery.incrementalPaybackYear : s.paybackYear;
   const benefits = s.battery.benefitYears;
+  if (year === null && !incremental && !batteryOnly) {
+    return m('noPayback', { years: s.years.length }) + (benefits === null ? '' : ` · ${m('batteryNoPayback', { years: benefits })}`);
+  }
   if (benefits !== null && (year === null || year > benefits)) {
     return m('batteryNoPayback', { years: benefits }) + (year === null ? '' : ` · ${m('afterBattery', { year })}`);
   }
@@ -36,7 +39,7 @@ export function renderResults(result: Result, input: CalculationInput, lang: Lan
   const energy = [
     [t.generation, firstYear.generationKwh], [t.direct, firstYear.directKwh],
     [t.discharge, firstYear.dischargeKwh], [t.export, firstYear.exportKwh],
-    ...(hasBattery ? [[t.charge, firstYear.chargeKwh], [t.batteryLoss, firstYear.chargeKwh - firstYear.dischargeKwh]] as const : []),
+    ...(hasBattery ? [[t.charge, firstYear.chargeKwh], [t.batteryLoss, firstYear.batteryLossKwh]] as const : []),
   ] as const;
   const policy = ([['panel', t.panelStcs, result.subsidies.panelRebate], ['battery', t.batteryStcs, result.subsidies.batteryRebate]] as const)
     .filter(([kind]) => result.subsidies[kind].reason !== 'no_system')
@@ -60,7 +63,7 @@ export function renderResults(result: Result, input: CalculationInput, lang: Lan
     }).join('');
     return `<section class="basis"><h3>${e(title)}</h3>${basis === 'expected' ? `<p class="hint">${e(t.expectedNote)}</p>` : ''}<div class="scenario-grid">${cards}</div></section>`;
   }).join('');
-  return `<div class="result-summary"><div><span class="eyebrow">${e(t.firstYearSavings)}</span><p class="saving" data-first-year>${e(money(firstYear.savings))}<small>AUD</small></p><p>${m('zone', { zone: result.zone })}</p></div>
+  return `<div class="result-summary"><div><span class="eyebrow">${e(batteryOnly ? t.firstYearIncrementalSavings : t.firstYearSavings)}</span><p class="saving" data-first-year>${e(money(firstYear.savings))}<small>AUD</small></p><p>${m('zone', { zone: result.zone })}</p></div>
     <dl>${metric(t.netCost, money(result.netCost))}${metric(t.utilisation, result.utilisation === null ? t.noBattery : percent(result.utilisation, lang))}</dl>
     ${hasBattery ? `<p class="hint">${e(t.utilisationHint)}</p>` : ''}
     ${result.batteryMayBeOversized ? `<p class="notice">${e(t.oversized)}</p>` : ''}</div>

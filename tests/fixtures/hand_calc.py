@@ -186,6 +186,7 @@ for c in CASES:
             f"| D | Σ 天数×D | {fmt(D, 1)} kWh |",
             f"| B_out | Σ 天数×B_out | {fmt(B_out, 1)} kWh |",
             f"| B | Σ 天数×B | {fmt(B, 1)} kWh |",
+            f"| 电池损耗 | B − B_out | {fmt(B-B_out, 2)} kWh |",
             f"| X | Σ 天数×X | {fmt(X, 1)} kWh |",
             (f"| S（第 1 年） | (D+B_out)×p + X×f | ${fmt(S1,2)} |" if c["mode"] == "solar"
              else f"| S（第 1 年，增量） | B_out×p − B×f | ${fmt(S1,2)} |"),
@@ -246,6 +247,43 @@ for Cb, dt, why in [(20, "2026-04-30", "分档生效前，全部容量按 100%")
                     (20, "2025-06-30", "早于 2025-07-01，不适用"), (20, "2031-01-01", "晚于系数表，不适用")]:
     n_, eff_ = battery_stcs(Cb, dt)
     out.append(f"| {Cb} kWh | {dt} | {fmt(eff_, 2)} kWh | {n_} 张 | {why} |")
+out.append("")
+
+out += ["## 第 7 步补充核对（独立手算，不调用 calc.ts）", "",
+        "### 用例 2：报价未扣补贴", ""]
+c2 = CASES[1]
+panel_count = math.floor(c2["P"] * zones["zone_ratings"][str(zone_of(c2["postcode"]))] * zones["deeming_years_by_install_year"][c2["install"][:4]])
+battery_count = battery_stcs(c2["C"], c2["install"])[0]
+panel_value = panel_count * defaults["stc_price_dollars"]
+battery_value = battery_count * defaults["stc_price_dollars"]
+out += ["把已扣补贴报价加回对应 STC 金额，构造同一系统的补贴前报价，再扣回补贴。", "",
+        "| 项目 | 金额 |", "| --- | --- |",
+        f"| 面板补贴（{panel_count} × ${defaults['stc_price_dollars']}） | ${panel_value:,.2f} |",
+        f"| 电池补贴（{battery_count} × ${defaults['stc_price_dollars']}） | ${battery_value:,.2f} |",
+        f"| 太阳能补贴前报价 | ${c2['solar_quote']+panel_value:,.2f} |",
+        f"| 电池补贴前报价 | ${c2['battery_quote']+battery_value:,.2f} |",
+        f"| 扣补贴后太阳能成本 | ${c2['solar_quote']:,.2f} |",
+        f"| 扣补贴后电池成本 | ${c2['battery_quote']:,.2f} |",
+        f"| 净成本 | ${c2['solar_quote']+c2['battery_quote']:,.2f} |", "",
+        "### 电费单反推全年用电", ""]
+billing_days = 90  # 使用原手算夏季天数作为测试账期；是输入，不是默认账期。
+supply = defaults["vdo_flat_2026_27"][defaults["default_distributor"]]["supply_dollars_per_day"]
+bill = round(annual * billing_days / 365 * p0 + supply * billing_days, 2)
+recovered = (bill - supply * billing_days) / p0 * 365 / billing_days
+out += [f"测试输入：{defaults['default_distributor']}，买电 {p0*100:.2f} c/kWh，供电费 ${supply}/天，账期 {billing_days} 天。",
+        "从原手算全年用电构造账单并取整到澳分，再按账单反推；账单取整会产生微小误差。", "",
+        "| 项目 | 公式 | 结果 |", "| --- | --- | --- |",
+        f"| 账单总额 | round(年用电×账期/365×p + 供电费×账期, 2) | ${bill:,.2f} |",
+        f"| 反推全年用电 | (账单总额 − 供电费×账期)/p×365/账期 | {recovered:,.6f} kWh |", "",
+        "### 用例 2：整体 30 年不回本的显示压力用例", "",
+        "仅把原用例 2 的两项已扣补贴报价放大 10 倍，用于验证未回本的展示；不是市场报价或默认值。其他输入不变。", ""]
+stress = dict(c2, solar_quote=c2["solar_quote"] * 10, battery_quote=c2["battery_quote"] * 10)
+out += [f"太阳能报价 ${stress['solar_quote']:,}，电池报价 ${stress['battery_quote']:,}，净成本 ${stress['solar_quote']+stress['battery_quote']:,}。", "",
+        "| 电池计收益口径 | 电价年涨幅 | 整体回本 |", "| --- | --- | --- |"]
+for life in [WY, EL]:
+    for esc in A["price_escalation_scenarios"]:
+        pb = simulate(stress, esc, life, FIT)[0]
+        out.append(f"| {life} 年 | {int(esc*100)}% | " + ("30 年内未回本" if pb is None else f"第 {pb} 年") + " |")
 out.append("")
 
 (ROOT / "tests/fixtures/hand-calc.md").write_text("\n".join(out))

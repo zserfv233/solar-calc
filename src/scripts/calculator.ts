@@ -2,6 +2,8 @@ import { defaultsVic } from '../lib/data';
 import { calculateProject } from '../lib/calc';
 import { FormInputError, message, readCalculatorForm, referenceQuote, type Language } from '../lib/calculator-ui';
 import { money, renderResults } from '../lib/results';
+import { saveLanguage } from '../lib/language';
+import { TariffSelection } from '../lib/form-behavior';
 
 const lang: Language = document.body.dataset.language === 'en' ? 'en' : 'zh';
 const form = document.querySelector<HTMLFormElement>('#calculator-form')!;
@@ -12,6 +14,7 @@ const field = (name: string) => form.elements.namedItem(name) as HTMLInputElemen
 const value = (name: string) => new FormData(form).get(name)?.toString() ?? '';
 const d = defaultsVic.values;
 let hasResult = false;
+const tariffSelection = new TariffSelection();
 
 function toggle(selector: string, visible: boolean) {
   const group = form.querySelector<HTMLElement>(selector)!;
@@ -66,13 +69,19 @@ function calculate(scroll: boolean) {
 }
 
 form.addEventListener('submit', (event) => { event.preventDefault(); calculate(true); });
-form.addEventListener('input', invalidate);
+form.addEventListener('input', (event) => {
+  if ((event.target as HTMLInputElement).name === 'importTariffCents') tariffSelection.markUserEdited();
+  invalidate();
+});
 form.addEventListener('change', (event) => {
   invalidate();
   const target = event.target as HTMLInputElement | HTMLSelectElement;
-  if (target.name === 'distributor') field('importTariffCents').value = String(d.vdo_flat_2026_27[target.value].usage_c_per_kwh);
-  // 仅使用数据里明确对应容量的参考报价，不对其他容量插值。
-  if (target.name === 'solarKw') field('solarQuote').value = String(referenceQuote('solar', Number(target.value)) ?? '');
+  if (target.name === 'distributor') {
+    const tariff = tariffSelection.changeDistributor(target.value);
+    if (tariff !== undefined) field('importTariffCents').value = String(tariff);
+  }
+  // 改太阳能容量保留已填报价；不根据系统大小推测用户的安装报价。
+  // 电池参考报价仍只匹配数据中明确对应的容量，不插值。
   if (target.name === 'batteryKwh') {
     field('batteryQuote').value = String(referenceQuote('battery', Number(target.value)) ?? '');
   }
@@ -80,14 +89,15 @@ form.addEventListener('change', (event) => {
 });
 
 // 仅在用户切换语言时短暂保存到本标签页的 sessionStorage；另一页读取后立即移除。
-// 输入不放到 URL，不发送到服务器，也不使用持久化 localStorage。
+// 输入不放到 URL、不发送到服务器；localStorage 另仅存语言偏好。
 const storageKey = 'solar-calc-language-transfer';
 document.querySelector('#language-switch')!.addEventListener('click', () => {
+  try { saveLanguage(lang === 'zh' ? 'en' : 'zh', window.localStorage); } catch { /* 存储不可用时仍可切换。 */ }
   try {
     const entries = Array.from(form.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select'))
       .filter((input) => input.type !== 'radio' || (input as HTMLInputElement).checked)
       .map((input) => [input.name, input.value]);
-    sessionStorage.setItem(storageKey, JSON.stringify({ entries, hasResult }));
+    sessionStorage.setItem(storageKey, JSON.stringify({ entries, hasResult, tariffUserEdited: tariffSelection.userEdited }));
   } catch { /* 浏览器禁用存储时仍允许正常切换页面。 */ }
 });
 
@@ -111,6 +121,7 @@ try {
         }
       }
       restoreResult = 'hasResult' in parsed && parsed.hasResult === true;
+      if ('tariffUserEdited' in parsed && parsed.tariffUserEdited === true) tariffSelection.markUserEdited();
     }
   }
 } catch { /* 存储不可用或内容无效时使用表单默认值。 */ }

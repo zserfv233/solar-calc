@@ -111,5 +111,12 @@
   "seasonalSource": "BOM 日照与 AER 季节用电",
   "batteryModelSource": "电池质保与寿命假设",
   "charge": "电池充电",
-  "batteryLoss": "电池充放电损耗"
+  "batteryLoss": "电池充放电损耗",
+  "firstYearIncrementalSavings": "第 1 年预计增量省钱",
+  "feedInSource": "上网电价规则（ESC）",
+  "solarQuoteSource": "太阳能参考报价（Solar Choice）",
+  "batteryQuoteSource": "电池参考报价（Energy Matters）",
+  "stcPriceSource": "STC 折抵价格参考（Ecovantage）",
+  "batteryPolicySource": "电池补贴政策（CER）",
+  "batteryLifeSource": "电池预期寿命（energy.gov.au）"
 }

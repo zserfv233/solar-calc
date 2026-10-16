@@ -1,4 +1,17 @@
----
-// 根路径跳转到默认语言。第 7 步改成按浏览器语言跳转。
-return Astro.redirect('/zh/');
----
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>solar-calc · 中文 / English</title>
+  </head>
+  <body>
+    <main><h1>solar-calc</h1><p><a href="/zh/">中文</a> · <a href="/en/">English</a></p></main>
+    <script>
+      import { readLanguage } from '../lib/language';
+      let storage: Storage | undefined;
+      try { storage = window.localStorage; } catch { /* 禁用存储时按浏览器语言选择。 */ }
+      window.location.replace(`/${readLanguage(navigator.language, storage)}/`);
+    </script>
+  </body>
+</html>
