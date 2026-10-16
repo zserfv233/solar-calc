@@ -252,8 +252,8 @@ export function calculateProject(rawInput: CalculationInput) {
     batteryMayBeOversized: utilisation !== null && utilisation < assumptions.battery_utilisation_warning.threshold,
     scenarios, zeroFeedInScenarios: run(0),
     // 页面按当前语言从 i18n 字典读取提示文案。
-    notices: input.batteryKwh > 0 ? ['batteryRebateEligibilityNotice' as const] : [],
-    netBenefitNote: '未计维护及资金成本',
+    notices: battery.applicable ? ['batteryRebateEligibilityNotice' as const] : [],
+    netBenefitNote: 'netBenefitNote' as const,
   };
 }
 
