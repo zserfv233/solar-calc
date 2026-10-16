@@ -91,6 +91,7 @@ export interface EnergyFlows {
   directKwh: number;
   chargeKwh: number;
   dischargeKwh: number;
+  batteryLossKwh: number;
   exportKwh: number;
 }
 
@@ -160,12 +161,12 @@ function yearFlows(input: Input, weights: ReturnType<typeof seasonWeights>, gene
     const discharge = Math.min(surplus * assumptions.round_trip_efficiency, capacity, night);
     const charge = discharge / assumptions.round_trip_efficiency;
     return { name: s.name, days: s.days, generationKwh: generation, daytimeLoadKwh: day,
-      nighttimeLoadKwh: night, directKwh: direct, chargeKwh: charge, dischargeKwh: discharge,
+      nighttimeLoadKwh: night, directKwh: direct, chargeKwh: charge, dischargeKwh: discharge, batteryLossKwh: charge - discharge,
       exportKwh: Math.max(0, surplus - charge) };
   });
   const sum = (key: keyof EnergyFlows) => finite(seasons.reduce((total, s) => total + s[key] * s.days, 0));
   return { generationKwh: sum('generationKwh'), directKwh: sum('directKwh'), chargeKwh: sum('chargeKwh'),
-    dischargeKwh: sum('dischargeKwh'), exportKwh: sum('exportKwh'), seasons };
+    dischargeKwh: sum('dischargeKwh'), batteryLossKwh: sum('batteryLossKwh'), exportKwh: sum('exportKwh'), seasons };
 }
 
 function simulate(input: Input, weights: ReturnType<typeof seasonWeights>, annualGeneration: number,
@@ -202,7 +203,7 @@ function simulate(input: Input, weights: ReturnType<typeof seasonWeights>, annua
     if (input.batteryKwh > 0 && dischargeKwh > 0 && incrementalPaybackYear === null && cumulativeIncrementalSavings >= batteryCost) {
       incrementalPaybackYear = year;
     }
-    years.push({ year, generationKwh: generation, directKwh, chargeKwh, dischargeKwh, exportKwh,
+    years.push({ year, generationKwh: generation, directKwh, chargeKwh, dischargeKwh, batteryLossKwh: finite(chargeKwh - dischargeKwh), exportKwh,
       savings, incrementalSavings, cumulativeSavings, cumulativeIncrementalSavings, cumulativeDischargeKwh, batteryFraction: k });
   }
   const tenYear = years[netBenefitYears - 1];

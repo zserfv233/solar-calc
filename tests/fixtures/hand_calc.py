@@ -186,6 +186,7 @@ for c in CASES:
             f"| D | Σ 天数×D | {fmt(D, 1)} kWh |",
             f"| B_out | Σ 天数×B_out | {fmt(B_out, 1)} kWh |",
             f"| B | Σ 天数×B | {fmt(B, 1)} kWh |",
+            f"| 电池损耗 | B − B_out | {fmt(B-B_out, 2)} kWh |",
             f"| X | Σ 天数×X | {fmt(X, 1)} kWh |",
             (f"| S（第 1 年） | (D+B_out)×p + X×f | ${fmt(S1,2)} |" if c["mode"] == "solar"
              else f"| S（第 1 年，增量） | B_out×p − B×f | ${fmt(S1,2)} |"),
@@ -246,6 +247,74 @@ for Cb, dt, why in [(20, "2026-04-30", "分档生效前，全部容量按 100%")
                     (20, "2025-06-30", "早于 2025-07-01，不适用"), (20, "2031-01-01", "晚于系数表，不适用")]:
     n_, eff_ = battery_stcs(Cb, dt)
     out.append(f"| {Cb} kWh | {dt} | {fmt(eff_, 2)} kWh | {n_} 张 | {why} |")
+out.append("")
+
+out += ["## 第 7 步补充核对（独立手算，不调用 calc.ts）", "",
+        "### 用例 2：报价未扣补贴", ""]
+c2 = CASES[1]
+panel_count = math.floor(c2["P"] * zones["zone_ratings"][str(zone_of(c2["postcode"]))] * zones["deeming_years_by_install_year"][c2["install"][:4]])
+battery_count = battery_stcs(c2["C"], c2["install"])[0]
+panel_value = panel_count * defaults["stc_price_dollars"]
+battery_value = battery_count * defaults["stc_price_dollars"]
+out += ["把已扣补贴报价加回对应 STC 金额，构造同一系统的补贴前报价，再扣回补贴。", "",
+        "| 项目 | 金额 |", "| --- | --- |",
+        f"| 面板补贴（{panel_count} × ${defaults['stc_price_dollars']}） | ${panel_value:,.2f} |",
+        f"| 电池补贴（{battery_count} × ${defaults['stc_price_dollars']}） | ${battery_value:,.2f} |",
+        f"| 太阳能补贴前报价 | ${c2['solar_quote']+panel_value:,.2f} |",
+        f"| 电池补贴前报价 | ${c2['battery_quote']+battery_value:,.2f} |",
+        f"| 扣补贴后太阳能成本 | ${c2['solar_quote']:,.2f} |",
+        f"| 扣补贴后电池成本 | ${c2['battery_quote']:,.2f} |",
+        f"| 净成本 | ${c2['solar_quote']+c2['battery_quote']:,.2f} |", "",
+        "### 电费单反推全年用电", ""]
+billing_days = 90  # 使用原手算夏季天数作为测试账期；是输入，不是默认账期。
+supply = defaults["vdo_flat_2026_27"][defaults["default_distributor"]]["supply_dollars_per_day"]
+bill = round(annual * billing_days / 365 * p0 + supply * billing_days, 2)
+recovered = (bill - supply * billing_days) / p0 * 365 / billing_days
+out += [f"测试输入：{defaults['default_distributor']}，买电 {p0*100:.2f} c/kWh，供电费 ${supply}/天，账期 {billing_days} 天。",
+        "从原手算全年用电构造账单并取整到澳分，再按账单反推；账单取整会产生微小误差。", "",
+        "| 项目 | 公式 | 结果 |", "| --- | --- | --- |",
+        f"| 账单总额 | round(年用电×账期/365×p + 供电费×账期, 2) | ${bill:,.2f} |",
+        f"| 反推全年用电 | (账单总额 − 供电费×账期)/p×365/账期 | {recovered:,.6f} kWh |", "",
+        "### 用例 2：整体 30 年不回本的显示压力用例", "",
+        "仅把原用例 2 的两项已扣补贴报价放大 10 倍，用于验证未回本的展示；不是市场报价或默认值。其他输入不变。", ""]
+stress = dict(c2, solar_quote=c2["solar_quote"] * 10, battery_quote=c2["battery_quote"] * 10)
+out += [f"太阳能报价 ${stress['solar_quote']:,}，电池报价 ${stress['battery_quote']:,}，净成本 ${stress['solar_quote']+stress['battery_quote']:,}。", "",
+        "| 电池计收益口径 | 电价年涨幅 | 整体回本 |", "| --- | --- | --- |"]
+for life in [WY, EL]:
+    for esc in A["price_escalation_scenarios"]:
+        pb = simulate(stress, esc, life, FIT)[0]
+        out.append(f"| {life} 年 | {int(esc*100)}% | " + ("30 年内未回本" if pb is None else f"第 {pb} 年") + " |")
+out.append("")
+
+out += ["## 2027–2031 半年节点 STC 核对", "",
+        "独立读取 data/ 的政策参数计算，不调用 calc.ts；输入为 6.6 kW 面板、20 kWh 可用容量电池、邮编 3000。",
+        "每年取 1 月 1 日和 7 月 1 日，共 10 个节点；2031 年已超出政策期，面板与电池 STC 均不适用（张数为 0）。", ""]
+stc_panel_kw, stc_battery_kwh, stc_postcode = 6.6, 20, 3000
+stc_zone = zone_of(stc_postcode)
+stc_rating = zones["zone_ratings"][str(stc_zone)]
+
+def panel_stcs(P, postcode, date):
+    """面板 STC：按安装年视同年限向下取整；政策表之外为 0。"""
+    years = zones["deeming_years_by_install_year"].get(date[:4], 0)
+    return math.floor(P * zones["zone_ratings"][str(zone_of(postcode))] * years)
+
+stc_effective_capacity = battery_stcs(stc_battery_kwh, "2027-01-01")[1]
+baseline = "2026-12-31"
+out += [f"邮编 {stc_postcode} → 分区 {stc_zone}，R = {stc_rating}。面板张数 = ⌊{stc_panel_kw}×R×视同年限⌋；"
+        f"电池分档计入容量为 {stc_effective_capacity:g} kWh，张数 = ⌊计入容量×当期系数⌋。", "",
+        f"切换前基线 {baseline}：面板 {panel_stcs(stc_panel_kw, stc_postcode, baseline)} 张，"
+        f"电池 {battery_stcs(stc_battery_kwh, baseline)[0]} 张。", "",
+        "| 安装日期 | 视同年限 | 电池系数 | 面板 STC（张） | 电池 STC（张） |",
+        "| --- | --- | --- | --- | --- |"]
+for year in range(2027, 2032):
+    for month in (1, 7):
+        date = f"{year}-{month:02d}-01"
+        years = zones["deeming_years_by_install_year"].get(str(year))
+        factor = next((p["factor"] for p in battery["factor_periods"] if p["start"] <= date <= p["end"]), None)
+        panels = panel_stcs(stc_panel_kw, stc_postcode, date)
+        batteries = battery_stcs(stc_battery_kwh, date)[0]
+        out.append(f"| {date} | {years if years is not None else '不适用'} | "
+                   f"{factor if factor is not None else '不适用'} | {panels} | {batteries} |")
 out.append("")
 
 (ROOT / "tests/fixtures/hand-calc.md").write_text("\n".join(out))

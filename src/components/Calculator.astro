@@ -1,6 +1,7 @@
 ---
-import { batteryRebate, defaultsVic, seasonalVic } from '../lib/data';
+import { defaultsVic } from '../lib/data';
 import { dictionaries, type Language } from '../lib/calculator-ui';
+import { sourcesById } from '../lib/sources';
 import '../styles/calculator.css';
 
 interface Props { lang: Language }
@@ -10,8 +11,13 @@ const d = defaultsVic.values;
 const a = d.assumptions_from_plan;
 const quotes = d.typical_quotes_after_rebate;
 const tariffs = d.vdo_flat_2026_27;
-const sourceUrls = Array.isArray(defaultsVic.source) ? defaultsVic.source : [defaultsVic.source];
-const urlOf = (source: string | string[]) => Array.isArray(source) ? source[0] : source;
+const sources = sourcesById();
+const sourceItems = [
+  ['vdo', 'tariffSource'], ['usage', 'usageSource'], ['feedIn', 'feedInSource'],
+  ['solarQuote', 'solarQuoteSource'], ['batteryQuote', 'batteryQuoteSource'],
+  ['stcPrice', 'stcPriceSource'], ['batteryPolicy', 'batteryPolicySource'],
+  ['seasonal', 'seasonalSource'], ['batteryWarranty', 'batteryModelSource'], ['batteryLife', 'batteryLifeSource'],
+] as const;
 const shareLabel = (share: number) => new Intl.NumberFormat(lang === 'zh' ? 'zh-CN' : 'en-AU', { style: 'percent' }).format(share);
 ---
 <!doctype html>
@@ -82,13 +88,7 @@ const shareLabel = (share: number) => new Intl.NumberFormat(lang === 'zh' ? 'zh-
           <div class="sun-mark" aria-hidden="true"><span></span></div>
           <h2>{t.emptyTitle}</h2><p>{t.emptyText}</p><div class="guide-divider"></div><p class="hint">{t.modelNote}</p>
           <details id="defaults" class="defaults"><summary>{t.defaultsTitle}</summary>
-            <p><a href={sourceUrls[0]} target="_blank" rel="noreferrer">{t.tariffSource}</a><small>{t.checkedOn.replace('{date}', defaultsVic.last_checked)}</small></p>
-            <p><a href={sourceUrls[1]} target="_blank" rel="noreferrer">{t.usageSource}</a><small>{t.checkedOn.replace('{date}', defaultsVic.last_checked)}</small></p>
-            <p><a href={Array.isArray(quotes.source) ? quotes.source[0] : quotes.source} target="_blank" rel="noreferrer">{t.quoteSource}</a><small>{t.checkedOn.replace('{date}', quotes.last_checked)}</small></p>
-            <p><a href={Array.isArray(quotes.source) ? quotes.source[1] : quotes.source} target="_blank" rel="noreferrer">Energy Matters</a></p>
-            <p><a href={urlOf(batteryRebate.source)} target="_blank" rel="noreferrer">{t.stcSource}</a> · <a href={sourceUrls[3]} target="_blank" rel="noreferrer">Ecovantage</a><small>{t.checkedOn.replace('{date}', batteryRebate.last_checked)}</small></p>
-            <p><a href={urlOf(seasonalVic.source)} target="_blank" rel="noreferrer">{t.seasonalSource}</a><small>{t.checkedOn.replace('{date}', seasonalVic.last_checked)}</small></p>
-            <p><a href={urlOf(d.battery_warranty.source)} target="_blank" rel="noreferrer">{t.batteryModelSource}</a> · <a href={urlOf(d.battery_expected_life.source)} target="_blank" rel="noreferrer">energy.gov.au</a><small>{t.checkedOn.replace('{date}', d.battery_expected_life.last_checked)}</small></p>
+            {sourceItems.map(([id, key]) => <p><a data-source-id={id} href={sources[id].url} target="_blank" rel="noreferrer">{t[key]}</a><small>{t.checkedOn.replace('{date}', sources[id].last_checked)}</small></p>)}
             <p class="hint">{t.assumptionsSource}<small>{t.checkedOn.replace('{date}', defaultsVic.last_checked)}</small></p>
           </details>
         </aside>
