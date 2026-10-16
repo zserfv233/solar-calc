@@ -11,3 +11,9 @@ export class TariffSelection {
     return tariffs[distributor].usage_c_per_kwh;
   }
 }
+
+/** 只更新未手改的自动报价或空报价；缺少对应参考价时保留原值。 */
+export function batteryQuoteForCapacity(currentQuote: string, nextReference: number | null, userEdited: boolean): string {
+  if (nextReference === null || (userEdited && currentQuote.trim() !== '')) return currentQuote;
+  return String(nextReference);
+}

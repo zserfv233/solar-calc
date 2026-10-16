@@ -3,7 +3,7 @@ import { calculateProject } from '../lib/calc';
 import { FormInputError, message, readCalculatorForm, referenceQuote, type Language } from '../lib/calculator-ui';
 import { money, renderResults } from '../lib/results';
 import { saveLanguage } from '../lib/language';
-import { TariffSelection } from '../lib/form-behavior';
+import { batteryQuoteForCapacity, TariffSelection } from '../lib/form-behavior';
 
 const lang: Language = document.body.dataset.language === 'en' ? 'en' : 'zh';
 const form = document.querySelector<HTMLFormElement>('#calculator-form')!;
@@ -15,6 +15,7 @@ const value = (name: string) => new FormData(form).get(name)?.toString() ?? '';
 const d = defaultsVic.values;
 let hasResult = false;
 const tariffSelection = new TariffSelection();
+let batteryQuoteUserEdited = false;
 
 function toggle(selector: string, visible: boolean) {
   const group = form.querySelector<HTMLElement>(selector)!;
@@ -71,6 +72,7 @@ function calculate(scroll: boolean) {
 form.addEventListener('submit', (event) => { event.preventDefault(); calculate(true); });
 form.addEventListener('input', (event) => {
   if ((event.target as HTMLInputElement).name === 'importTariffCents') tariffSelection.markUserEdited();
+  if ((event.target as HTMLInputElement).name === 'batteryQuote') batteryQuoteUserEdited = true;
   invalidate();
 });
 form.addEventListener('change', (event) => {
@@ -83,7 +85,12 @@ form.addEventListener('change', (event) => {
   // 改太阳能容量保留已填报价；不根据系统大小推测用户的安装报价。
   // 电池参考报价仍只匹配数据中明确对应的容量，不插值。
   if (target.name === 'batteryKwh') {
-    field('batteryQuote').value = String(referenceQuote('battery', Number(target.value)) ?? '');
+    const quote = field('batteryQuote');
+    const next = batteryQuoteForCapacity(quote.value, referenceQuote('battery', Number(target.value)), batteryQuoteUserEdited);
+    if (next !== quote.value) {
+      quote.value = next;
+      batteryQuoteUserEdited = false;
+    }
   }
   updateFields();
 });
@@ -97,7 +104,7 @@ document.querySelector('#language-switch')!.addEventListener('click', () => {
     const entries = Array.from(form.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select'))
       .filter((input) => input.type !== 'radio' || (input as HTMLInputElement).checked)
       .map((input) => [input.name, input.value]);
-    sessionStorage.setItem(storageKey, JSON.stringify({ entries, hasResult, tariffUserEdited: tariffSelection.userEdited }));
+    sessionStorage.setItem(storageKey, JSON.stringify({ entries, hasResult, tariffUserEdited: tariffSelection.userEdited, batteryQuoteUserEdited }));
   } catch { /* 浏览器禁用存储时仍允许正常切换页面。 */ }
 });
 
@@ -122,6 +129,12 @@ try {
       }
       restoreResult = 'hasResult' in parsed && parsed.hasResult === true;
       if ('tariffUserEdited' in parsed && parsed.tariffUserEdited === true) tariffSelection.markUserEdited();
+      // 新版保留手改标记；兼容旧版切换记录时，非当前参考价视为用户报价。
+      const restoredQuote = field('batteryQuote').value;
+      const restoredReference = referenceQuote('battery', Number(field('batteryKwh').value));
+      batteryQuoteUserEdited = 'batteryQuoteUserEdited' in parsed && typeof parsed.batteryQuoteUserEdited === 'boolean'
+        ? parsed.batteryQuoteUserEdited
+        : restoredQuote.trim() !== '' && (restoredReference === null || Number(restoredQuote) !== restoredReference);
     }
   }
 } catch { /* 存储不可用或内容无效时使用表单默认值。 */ }
