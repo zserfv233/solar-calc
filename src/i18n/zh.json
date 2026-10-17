@@ -116,5 +116,13 @@
   "batteryQuoteSource": "电池参考报价（Energy Matters）",
   "stcPriceSource": "STC 折抵价格参考（Ecovantage）",
   "batteryPolicySource": "电池补贴政策（CER）",
-  "batteryLifeSource": "电池预期寿命（energy.gov.au）"
+  "batteryLifeSource": "电池预期寿命（energy.gov.au）",
+  "flowTitle": "第 1 年能量流向",
+  "flowSolar": "太阳能板",
+  "flowExistingSolar": "已有太阳能",
+  "flowHome": "家庭用电",
+  "flowGrid": "电网",
+  "flowBattery": "电池",
+  "flowNote": "数值为四季平均日模型的首年全年电量（kWh），并非实时流量。箭头只表示去向，不按电量比例；未展示电网购电。",
+  "flowBatteryOnlyNote": "图中包含已有太阳能的完整电量去向；上方省钱结果只计算加电池带来的增量。"
 }
