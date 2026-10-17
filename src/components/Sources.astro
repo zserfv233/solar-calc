@@ -1,0 +1,78 @@
+---
+import { dictionaries, type Language, type MessageKey } from '../lib/calculator-ui';
+import { sourceCatalog, sourceReviewLabel } from '../lib/source-catalog';
+import '../styles/calculator.css';
+import '../styles/sources.css';
+
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const t = dictionaries[lang];
+const other = lang === 'zh' ? 'en' : 'zh';
+const titles: Record<string, MessageKey> = {
+  'postcodes-vic.json': 'sourcePostcodes',
+  'stc-zones.json': 'sourceSolarPolicy',
+  'battery-rebate.json': 'sourceBatteryPolicy',
+  'defaults-vic.json': 'sourceDefaults',
+  'defaults-vic.json/values/typical_quotes_after_rebate': 'sourceReferenceQuotes',
+  'defaults-vic.json/values/battery_warranty': 'sourceWarranty',
+  'defaults-vic.json/values/battery_expected_life': 'sourceExpectedLife',
+  'seasonal-vic.json': 'sourceSeasonal',
+};
+const records = sourceCatalog();
+---
+<!doctype html>
+<html lang={lang === 'zh' ? 'zh-CN' : 'en-AU'}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={t.sourcesIntro} />
+    <title>{t.sourcesTitle} · solar-calc</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href={`/${lang}/`}>solar<span>calc</span></a>
+      <nav aria-label={t.sourcesTitle}>
+        <a href={`/${lang}/`}>{t.calculator}</a>
+        <a href={`/${other}/sources/`} lang={other} data-sources-language={other}>{t.languageSwitch}<span aria-hidden="true"> ↗</span></a>
+      </nav>
+    </header>
+    <main class="sources-main">
+      <section class="hero sources-hero">
+        <p class="eyebrow">SOLAR CALC</p><h1>{t.sourcesTitle}</h1>
+        <p class="intro">{t.sourcesIntro}</p>
+        <p class="hint sources-review-note">{t.sourcesReviewNote}</p>
+        <a class="sources-disclaimer-link" href="#disclaimer">{t.disclaimerTitle} ↓</a>
+      </section>
+      <section class="source-cards" aria-label={t.sourcesTitle}>
+        {records.map((record) => <article class="source-card" data-source-record={record.id}>
+          <h2>{t[titles[record.id] ?? 'sourceAdditional']}</h2>
+          <dl class="source-meta">
+            <div><dt>{t.sourceCheckedDate}</dt><dd><time datetime={record.lastChecked}>{record.lastChecked}</time></dd></div>
+            <div><dt>{t.sourceReviewStatus}</dt><dd><span class:list={['review-badge', { pending: record.checkedBy === 'ai' }]} data-checked-by={record.checkedBy}>{sourceReviewLabel(record.checkedBy, lang)}</span></dd></div>
+          </dl>
+          <ul class="source-links">
+            {record.urls.map((url) => <li><a href={url} target="_blank" rel="noopener noreferrer"><span class="source-host">{new URL(url).hostname}</span><span class="source-url">{url}</span></a></li>)}
+          </ul>
+        </article>)}
+      </section>
+      <section id="disclaimer" class="source-disclaimer" aria-labelledby="disclaimer-title">
+        <h2 id="disclaimer-title">{t.disclaimerTitle}</h2>
+        <p>{t.disclaimerEstimate}</p>
+        <p>{t.disclaimerPrices}</p>
+        <p>{t.disclaimerAdvice}</p>
+        <p>{t.netBenefitNote}</p>
+      </section>
+      <p class="sources-return"><a href={`/${lang}/`}>{t.backToCalculator} →</a></p>
+    </main>
+    <footer><a href={`/${lang}/`}>solar-calc</a><p>{t.privacy}</p><p>v0.1</p></footer>
+    <script>
+      import { saveLanguage } from '../lib/language';
+      document.querySelector<HTMLAnchorElement>('[data-sources-language]')?.addEventListener('click', (event) => {
+        const lang = (event.currentTarget as HTMLAnchorElement).dataset.sourcesLanguage;
+        if (lang === 'zh' || lang === 'en') {
+          try { saveLanguage(lang, window.localStorage); } catch { /* 禁用存储时仍允许切换。 */ }
+        }
+      });
+    </script>
+  </body>
+</html>
