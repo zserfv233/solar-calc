@@ -108,6 +108,28 @@
   .battery-details dl { display: grid; gap: 14px; margin-top: 14px; }
   .battery-details .metric dd { font-size: 14px; }
   .net-note { margin-top: 25px; font-size: 12px; color: #596d63; }
+  .energy-flow { margin: 32px 0 0; padding: 26px; border: 1px solid #dfe6d9; border-radius: 18px; background: #f1f5ec; min-width: 0; }
+  .energy-flow figcaption .hint { margin-top: 10px; max-width: 850px; }
+  .energy-flow-svg { display: block; width: 100%; height: auto; margin-top: 18px; overflow: hidden; }
+  .energy-flow-svg text { text-anchor: middle; fill: #233e2f; }
+  .flow-icon { fill: none; stroke: #4d6845; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .flow-node rect { fill: #fff; stroke: #c8d6c0; stroke-width: 1.5; }
+  .flow-node-solar rect { fill: #fff6de; stroke: #dbbd76; }
+  .flow-node-solar .flow-icon { stroke: #87692e; }
+  .flow-node-battery rect { fill: #e6f2ec; stroke: #97bfa9; }
+  .flow-node-battery .flow-icon { stroke: #43745b; }
+  .flow-node-label { font-size: 18px; font-weight: 600; }
+  .flow-line { fill: none; stroke: var(--flow-ink, #526b42); stroke-width: 3; stroke-linecap: round; }
+  .flow-battery { --flow-ink: #52856b; }
+  .flow-export { --flow-ink: #718573; }
+  .flow-loss { --flow-ink: #ad8a51; }
+  .flow-zero .flow-line { stroke: #a1aea0; stroke-dasharray: 5 7; }
+  .flow-label-bg { fill: #f1f5ec; }
+  .flow-label { font-size: 15px; }
+  .flow-value { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .flow-loss-end { fill: #caa66d; stroke: #f1f5ec; stroke-width: 3; }
+  .flow-context { padding-top: 14px; border-top: 1px solid #d9e3d2; }
+  .flow-compact { display: none; }
 }
 @layer responsive {
   @media (max-width: 850px) {
@@ -137,6 +159,15 @@
     .sensitivity>h2 { font-size: 22px; }
     .guide { padding: 24px; }
     footer p { flex-basis: 100%; }
+  }
+  @media (max-width: 600px) {
+    .energy-flow { padding: 18px 10px; }
+    .energy-flow figcaption, .flow-context { margin-inline: 8px; }
+    .flow-wide { display: none; }
+    .flow-compact { display: block; }
+    .flow-compact .flow-label { font-size: 12px; }
+    .flow-compact .flow-value { font-size: 17px; }
+    .flow-compact .flow-node-label { font-size: 16px; }
   }
   @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 }

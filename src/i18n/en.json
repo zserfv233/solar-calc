@@ -116,5 +116,13 @@
   "batteryQuoteSource": "Reference battery quotes (Energy Matters)",
   "stcPriceSource": "STC value reference (Ecovantage)",
   "batteryPolicySource": "Battery rebate policy (CER)",
-  "batteryLifeSource": "Expected battery life (energy.gov.au)"
+  "batteryLifeSource": "Expected battery life (energy.gov.au)",
+  "flowTitle": "First-year energy flow",
+  "flowSolar": "Solar panels",
+  "flowExistingSolar": "Existing solar",
+  "flowHome": "Home",
+  "flowGrid": "Grid",
+  "flowBattery": "Battery",
+  "flowNote": "First-year annual energy (kWh) from four seasonal average days, not live flows. Arrows show direction, not quantity; grid imports are not shown.",
+  "flowBatteryOnlyNote": "The diagram includes all energy flows from your existing solar. The savings above only count the incremental benefit of adding a battery."
 }

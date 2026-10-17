@@ -1,5 +1,6 @@
 import type { CalculationInput, calculateProject, ScenarioResult } from './calc';
 import { dictionaries, message, type Language } from './calculator-ui';
+import { renderEnergyFlow } from './energy-flow';
 
 type Result = ReturnType<typeof calculateProject>;
 export const money = (value: number, digits = 2) => new Intl.NumberFormat('en-AU', {
@@ -67,6 +68,7 @@ export function renderResults(result: Result, input: CalculationInput, lang: Lan
     <dl>${metric(t.netCost, money(result.netCost))}${metric(t.utilisation, result.utilisation === null ? t.noBattery : percent(result.utilisation, lang))}</dl>
     ${hasBattery ? `<p class="hint">${e(t.utilisationHint)}</p>` : ''}
     ${result.batteryMayBeOversized ? `<p class="notice">${e(t.oversized)}</p>` : ''}</div>
+    ${renderEnergyFlow(firstYear, lang, hasBattery, batteryOnly)}
     <div class="result-facts"><section><h3>${e(t.energyTitle)}</h3><dl class="energy-totals">${energy.map(([label, value]) => metric(label, `${number(value, lang)} kWh`)).join('')}</dl></section>
     <section><h3>${e(t.subsidies)}</h3><dl class="subsidy-totals">${policy}</dl><p class="hint">${e(input.quoteIncludesRebate !== false ? t.rebateIncluded : t.rebateDeducted)}</p>
     ${result.notices.map((key) => `<p class="notice" data-rebate-notice>${e(t[key])}</p>`).join('')}</section></div>
