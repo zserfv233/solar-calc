@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import defaultsVicRaw from '../data/defaults-vic.json';
 import postcodesRaw from '../data/postcodes-vic.json';
 import batteryRaw from '../data/battery-rebate.json';
 import seasonalRaw from '../data/seasonal-vic.json';
-import { batteryRebateSchema, defaultsVicSchema, postcodesSchema, seasonalVicSchema } from '../src/lib/schema';
+import { batteryRebateSchema, defaultsVicSchema, postcodesSchema, projectDataSchema, seasonalVicSchema } from '../src/lib/schema';
 import * as data from '../src/lib/data';
 
 describe('data/ 校验', () => {
@@ -15,10 +15,58 @@ describe('data/ 校验', () => {
     expect(data.seasonalVic.values.seasons.length).toBe(4);
   });
 
+  it('HTTPS 单链接、链接数组和现有全部数据（含嵌套来源）通过校验', () => {
+    expect(postcodesSchema.safeParse(postcodesRaw).success).toBe(true);
+    expect(postcodesSchema.safeParse({ ...postcodesRaw, source: [postcodesRaw.source] }).success).toBe(true);
+    expect(projectDataSchema.safeParse(data).success).toBe(true);
+  });
+
+  it.each([
+    postcodesRaw.source.replace(/^https:/, 'http:'),
+    postcodesRaw.source.replace(/^https:/, 'ftp:'),
+    'javascript:alert(1)', 'data:text/html,test', 'file:///tmp/source',
+    postcodesRaw.source.replace(/^https:/, ''), 'not a URL',
+  ])('来源拒绝非 HTTPS 或无效 URL：%s（单链接及数组）', (source) => {
+    expect(postcodesSchema.safeParse({ ...postcodesRaw, source }).success).toBe(false);
+    expect(postcodesSchema.safeParse({ ...postcodesRaw, source: [postcodesRaw.source, source] }).success).toBe(false);
+  });
+
+  it.each(['typical_quotes_after_rebate', 'battery_warranty', 'battery_expected_life'] as const)(
+    '嵌套元数据 %s 同样拒绝非 HTTPS 来源', (key) => {
+      const bad = structuredClone(defaultsVicRaw);
+      const source = postcodesRaw.source.replace(/^https:/, 'http:');
+      const meta = bad.values[key];
+      meta.source = Array.isArray(meta.source) ? [source] : source;
+      expect(defaultsVicSchema.safeParse(bad).success).toBe(false);
+    },
+  );
+
   it('邮编表里出现的每个分区都有季节日照数据', () => {
     const zones = new Set(data.postcodes.values.ranges.map((r) => String(r.zone)));
     for (const z of zones) {
       expect(data.seasonalVic.values.solar_mj_per_m2_day_by_zone[z as '3' | '4']).toBeDefined();
+    }
+  });
+
+  it.each(['3', '4'])('单文件合法但缺少分区 %s 日照时，跨文件校验拒绝', (zone) => {
+    const seasonalVic = structuredClone(seasonalRaw);
+    Reflect.deleteProperty(seasonalVic.values.solar_mj_per_m2_day_by_zone, zone);
+    expect(seasonalVicSchema.safeParse(seasonalVic).success).toBe(true);
+    const result = projectDataSchema.safeParse({ ...data, seasonalVic });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues[0].path).toEqual(['seasonalVic', 'values', 'solar_mj_per_m2_day_by_zone', zone]);
+  });
+
+  it('缺少日照记录时数据模块加载直接失败，使页面构建不能继续', async () => {
+    const incomplete = structuredClone(seasonalRaw);
+    Reflect.deleteProperty(incomplete.values.solar_mj_per_m2_day_by_zone, '4');
+    vi.resetModules();
+    vi.doMock('../data/seasonal-vic.json', () => ({ default: incomplete }));
+    try {
+      await expect(import('../src/lib/data')).rejects.toThrow('邮编分区 4 缺少季节日照记录');
+    } finally {
+      vi.doUnmock('../data/seasonal-vic.json');
+      vi.resetModules();
     }
   });
 

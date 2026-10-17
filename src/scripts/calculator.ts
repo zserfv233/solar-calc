@@ -1,9 +1,9 @@
 import { defaultsVic } from '../lib/data';
-import { calculateProject } from '../lib/calc';
-import { FormInputError, message, readCalculatorForm, referenceQuote, type Language } from '../lib/calculator-ui';
+import { calculateProject, type CalculationInput } from '../lib/calc';
+import { calculationFormError, clearFieldError, FormInputError, markFieldInvalid, message, numberFieldMin, readCalculatorForm, referenceQuote, type Language } from '../lib/calculator-ui';
 import { money, renderResults } from '../lib/results';
 import { saveLanguage } from '../lib/language';
-import { batteryQuoteForCapacity, TariffSelection } from '../lib/form-behavior';
+import { batteryQuoteForCapacity, quoteForCapacity, TariffSelection } from '../lib/form-behavior';
 
 const lang: Language = document.body.dataset.language === 'en' ? 'en' : 'zh';
 const form = document.querySelector<HTMLFormElement>('#calculator-form')!;
@@ -16,6 +16,14 @@ const d = defaultsVic.values;
 let hasResult = false;
 const tariffSelection = new TariffSelection();
 let batteryQuoteUserEdited = false;
+let lastEditedField: string | undefined;
+
+function updateQuoteHints() {
+  for (const [system, capacity] of [['solar', 'solarKw'], ['battery', 'batteryKwh']] as const) {
+    document.querySelector<HTMLElement>(`#${system}-quote-required`)!.hidden =
+      field(`${system}Quote`).value.trim() !== '' || referenceQuote(system, Number(field(capacity).value)) !== null;
+  }
+}
 
 function toggle(selector: string, visible: boolean) {
   const group = form.querySelector<HTMLElement>(selector)!;
@@ -25,6 +33,7 @@ function toggle(selector: string, visible: boolean) {
 
 function updateFields() {
   const plan = value('plan');
+  field('batteryKwh').setAttribute('min', String(numberFieldMin('batteryKwh', plan)));
   toggle('[data-new-solar]', plan !== 'battery_only');
   toggle('[data-existing-solar]', plan === 'battery_only');
   toggle('[data-battery-field]', plan !== 'solar_only');
@@ -36,24 +45,27 @@ function updateFields() {
   if (!Object.hasOwn(d.vdo_flat_2026_27, value('distributor'))) field('distributor').value = d.default_distributor;
   const tariff = d.vdo_flat_2026_27[value('distributor')];
   document.querySelector('#supply-charge')!.textContent = message(lang, 'supplyCharge', { value: money(tariff.supply_dollars_per_day, 4) });
+  updateQuoteHints();
 }
 
 function invalidate() {
   results.hidden = true;
   hasResult = false;
   error.hidden = true;
+  form.querySelectorAll<HTMLElement>('[aria-invalid="true"]').forEach(clearFieldError);
 }
 
 function calculate(scroll: boolean) {
-  error.hidden = true;
-  results.hidden = true;
-  hasResult = false;
+  invalidate();
+  let input: CalculationInput | undefined;
   try {
     if (!form.checkValidity()) {
-      form.querySelector<HTMLInputElement>(':invalid')?.focus();
-      throw new FormInputError('inputError');
+      const invalid = form.querySelector<HTMLInputElement | HTMLSelectElement>('input:invalid, select:invalid')!;
+      const key = invalid.validity.valueMissing && invalid.name.endsWith('Quote') ? 'quoteRequiredError'
+        : invalid.validity.rangeUnderflow && numberFieldMin(invalid.name, value('plan')) > 0 ? 'positiveInputError' : 'inputError';
+      throw new FormInputError(key, invalid.name);
     }
-    const input = readCalculatorForm(new FormData(form));
+    input = readCalculatorForm(new FormData(form));
     const result = calculateProject(input);
     content.innerHTML = renderResults(result, input, lang);
     results.hidden = false;
@@ -63,17 +75,27 @@ function calculate(scroll: boolean) {
       results.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
     }
   } catch (cause) {
-    error.textContent = message(lang, cause instanceof FormInputError ? cause.key : 'calculationError');
+    const edited = lastEditedField && !field(lastEditedField).disabled ? lastEditedField : undefined;
+    const problem = calculationFormError(cause, input, edited);
+    const control = problem.field ? form.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(problem.field)}"]`) : null;
+    const label = control?.closest('label')?.firstChild?.textContent?.trim();
+    error.textContent = `${label ? `${label}: ` : ''}${message(lang, problem.key)}`;
     error.hidden = false;
-    if (cause instanceof FormInputError && cause.field) form.querySelector<HTMLElement>(`[name="${CSS.escape(cause.field)}"]`)?.focus();
+    if (control && !control.disabled) markFieldInvalid(control);
+    else error.focus();
   }
 }
 
 form.addEventListener('submit', (event) => { event.preventDefault(); calculate(true); });
 form.addEventListener('input', (event) => {
+  const target = event.target as HTMLInputElement;
+  if (target.type === 'number') lastEditedField = target.name;
   if ((event.target as HTMLInputElement).name === 'importTariffCents') tariffSelection.markUserEdited();
   if ((event.target as HTMLInputElement).name === 'batteryQuote') batteryQuoteUserEdited = true;
+  // 标记属于表单状态，现有通用语言切换代码会原样转移；不改变存储读写逻辑。
+  if (target.name === 'solarQuote') field('solarQuoteEdited').value = 'yes';
   invalidate();
+  updateQuoteHints();
 });
 form.addEventListener('change', (event) => {
   invalidate();
@@ -82,8 +104,15 @@ form.addEventListener('change', (event) => {
     const tariff = tariffSelection.changeDistributor(target.value);
     if (tariff !== undefined) field('importTariffCents').value = String(tariff);
   }
-  // 改太阳能容量保留已填报价；不根据系统大小推测用户的安装报价。
-  // 电池参考报价仍只匹配数据中明确对应的容量，不插值。
+  // 只匹配 data/ 明确给出的参考价，不插值；无匹配时不能沿用旧容量的自动价。
+  if (target.name === 'solarKw') {
+    const quote = field('solarQuote');
+    const next = quoteForCapacity(quote.value, referenceQuote('solar', Number(target.value)), field('solarQuoteEdited').value === 'yes');
+    if (next !== quote.value) {
+      quote.value = next;
+      field('solarQuoteEdited').value = '';
+    }
+  }
   if (target.name === 'batteryKwh') {
     const quote = field('batteryQuote');
     const next = batteryQuoteForCapacity(quote.value, referenceQuote('battery', Number(target.value)), batteryQuoteUserEdited);

@@ -12,8 +12,10 @@ export class TariffSelection {
   }
 }
 
-/** 只更新未手改的自动报价或空报价；缺少对应参考价时保留原值。 */
-export function batteryQuoteForCapacity(currentQuote: string, nextReference: number | null, userEdited: boolean): string {
-  if (nextReference === null || (userEdited && currentQuote.trim() !== '')) return currentQuote;
-  return String(nextReference);
+/** 手填报价保留；自动报价必须匹配新容量，无参考项时清空，交给用户填写。 */
+export function quoteForCapacity(currentQuote: string, nextReference: number | null, userEdited: boolean): string {
+  if (userEdited && currentQuote.trim() !== '') return currentQuote;
+  return nextReference === null ? '' : String(nextReference);
 }
+
+export { quoteForCapacity as batteryQuoteForCapacity };

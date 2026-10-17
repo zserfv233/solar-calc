@@ -28,7 +28,7 @@
   nav { display: flex; gap: 28px; font-size: 13px; }
   nav a { text-decoration: none; }
   .hero { padding-block: 66px 48px; max-width: 800px; }
-  .hero .eyebrow { color: #627b61; margin-bottom: 20px; }
+  .hero .eyebrow { color: #4d634b; margin-bottom: 20px; }
   h1 { font-size: clamp(32px, 4.3vw, 54px); font-weight: 620; max-width: 780px; }
   .intro { color: #596d63; font-size: 16px; margin-top: 20px; max-width: 650px; }
   .privacy { display: flex; align-items: center; gap: 9px; font-size: 12px; color: #597253; margin-top: 20px; }
@@ -44,7 +44,7 @@
   .defaults { margin-top: 28px; font-size: 13px; }
   .defaults summary { font-weight: 650; }
   .defaults p { margin-top: 16px; overflow-wrap: anywhere; }
-  footer { margin-top: 70px; padding-block: 28px; border-top: 1px solid #dfe6d9; display: flex; justify-content: space-between; gap: 20px; color: #6d7e70; font-size: 12px; }
+  footer { margin-top: 70px; padding-block: 28px; border-top: 1px solid #dfe6d9; display: flex; justify-content: space-between; gap: 20px; color: #52664f; font-size: 12px; }
 }
 @layer form {
   fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
@@ -62,6 +62,7 @@
   .fields label { display: flex; flex-direction: column; gap: 7px; font-weight: 550; font-size: 13px; min-width: 0; }
   .wide { grid-column: 1/-1; }
   .fields input, .fields select { width: 100%; border: 1px solid #d3ddce; border-radius: 9px; background: #fff; padding: 11px 12px; color: #1f362b; font-size: 16px; min-height: 48px; }
+  .fields [aria-invalid="true"] { border-color: #8a352b; }
   .fields input:focus, .fields select:focus { border-color: #536e43; }
   .calculate { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; background: #254e36; color: #fff; border: 0; border-radius: 11px; margin-top: 28px; font-size: 15px; font-weight: 600; }
   .calculate:hover { background: #183f29; }

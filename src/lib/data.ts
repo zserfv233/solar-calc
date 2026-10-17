@@ -4,16 +4,12 @@ import stcZonesRaw from '../../data/stc-zones.json';
 import batteryRebateRaw from '../../data/battery-rebate.json';
 import defaultsVicRaw from '../../data/defaults-vic.json';
 import seasonalVicRaw from '../../data/seasonal-vic.json';
-import {
-  batteryRebateSchema,
-  defaultsVicSchema,
-  postcodesSchema,
-  seasonalVicSchema,
-  stcZonesSchema,
-} from './schema';
+import { projectDataSchema } from './schema';
 
-export const postcodes = postcodesSchema.parse(postcodesRaw);
-export const stcZones = stcZonesSchema.parse(stcZonesRaw);
-export const batteryRebate = batteryRebateSchema.parse(batteryRebateRaw);
-export const defaultsVic = defaultsVicSchema.parse(defaultsVicRaw);
-export const seasonalVic = seasonalVicSchema.parse(seasonalVicRaw);
+export const { postcodes, stcZones, batteryRebate, defaultsVic, seasonalVic } = projectDataSchema.parse({
+  postcodes: postcodesRaw,
+  stcZones: stcZonesRaw,
+  batteryRebate: batteryRebateRaw,
+  defaultsVic: defaultsVicRaw,
+  seasonalVic: seasonalVicRaw,
+});
