@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import defaultsVicRaw from '../data/defaults-vic.json';
 import postcodesRaw from '../data/postcodes-vic.json';
 import batteryRaw from '../data/battery-rebate.json';
 import seasonalRaw from '../data/seasonal-vic.json';
-import { batteryRebateSchema, defaultsVicSchema, postcodesSchema, seasonalVicSchema } from '../src/lib/schema';
+import { batteryRebateSchema, defaultsVicSchema, postcodesSchema, projectDataSchema, seasonalVicSchema } from '../src/lib/schema';
 import * as data from '../src/lib/data';
 
 describe('data/ 校验', () => {
@@ -19,6 +19,28 @@ describe('data/ 校验', () => {
     const zones = new Set(data.postcodes.values.ranges.map((r) => String(r.zone)));
     for (const z of zones) {
       expect(data.seasonalVic.values.solar_mj_per_m2_day_by_zone[z as '3' | '4']).toBeDefined();
+    }
+  });
+
+  it.each(['3', '4'])('单文件合法但缺少分区 %s 日照时，跨文件校验拒绝', (zone) => {
+    const seasonalVic = structuredClone(seasonalRaw);
+    Reflect.deleteProperty(seasonalVic.values.solar_mj_per_m2_day_by_zone, zone);
+    expect(seasonalVicSchema.safeParse(seasonalVic).success).toBe(true);
+    const result = projectDataSchema.safeParse({ ...data, seasonalVic });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues[0].path).toEqual(['seasonalVic', 'values', 'solar_mj_per_m2_day_by_zone', zone]);
+  });
+
+  it('缺少日照记录时数据模块加载直接失败，使页面构建不能继续', async () => {
+    const incomplete = structuredClone(seasonalRaw);
+    Reflect.deleteProperty(incomplete.values.solar_mj_per_m2_day_by_zone, '4');
+    vi.resetModules();
+    vi.doMock('../data/seasonal-vic.json', () => ({ default: incomplete }));
+    try {
+      await expect(import('../src/lib/data')).rejects.toThrow('邮编分区 4 缺少季节日照记录');
+    } finally {
+      vi.doUnmock('../data/seasonal-vic.json');
+      vi.resetModules();
     }
   });
 

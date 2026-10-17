@@ -1,6 +1,6 @@
 ---
 import { defaultsVic } from '../lib/data';
-import { dictionaries, type Language } from '../lib/calculator-ui';
+import { dictionaries, numberFieldMin, type Language } from '../lib/calculator-ui';
 import { sourcesById } from '../lib/sources';
 import '../styles/calculator.css';
 
@@ -40,6 +40,7 @@ const shareLabel = (share: number) => new Intl.NumberFormat(lang === 'zh' ? 'zh-
       </section>
       <div class="workspace">
         <form id="calculator-form" novalidate>
+          <input type="hidden" name="solarQuoteEdited" value="" />
           <fieldset class="plan-picker"><legend>{t.plan}</legend>
             <div class="plan-options">
               <label><input type="radio" name="plan" value="solar_only" checked /><span>{t.solarOnly}</span></label>
@@ -52,13 +53,13 @@ const shareLabel = (share: number) => new Intl.NumberFormat(lang === 'zh' ? 'zh-
               <label>{t.postcode}<input name="postcode" inputmode="numeric" autocomplete="postal-code" pattern="[0-9]{4}" maxlength="4" required aria-describedby="postcode-hint" /><small id="postcode-hint">{t.postcodeHint}</small></label>
               <label>{t.installationDate}<input type="date" name="installationDate" required /></label>
               <label class="wide">{t.distributor}<select name="distributor">{Object.keys(tariffs).map((name) => <option value={name} selected={name === d.default_distributor}>{name}</option>)}</select><small id="supply-charge"></small></label>
-              <label>{t.importTariff}<input name="importTariffCents" type="number" min="0" step="any" value={tariffs[d.default_distributor].usage_c_per_kwh} required /></label>
+              <label>{t.importTariff}<input name="importTariffCents" type="number" min={numberFieldMin("importTariffCents")} step="any" value={tariffs[d.default_distributor].usage_c_per_kwh} required /></label>
               <label>{t.feedInTariff}<input name="feedInTariffCents" type="number" min="0" step="any" value={d.feed_in_tariff_c_per_kwh} required /><small>{t.feedInHint}</small></label>
               <label class="wide">{t.usageMode}<select name="usageMode"><option value="annual">{t.annualMode}</option><option value="bill">{t.billMode}</option></select></label>
               <label class="wide" data-annual-field>{t.annualUsage}<input name="annualUsageKwh" type="number" min="0" step="any" value={d.annual_usage_kwh} required /></label>
               <div class="wide fields" data-bill-fields hidden>
                 <label>{t.billTotal}<input name="billTotal" type="number" min="0" step="any" disabled required /></label>
-                <label>{t.billDays}<input name="billDays" type="number" min="1" step="1" disabled required /></label>
+                <label>{t.billDays}<input name="billDays" type="number" min={numberFieldMin("billDays")} step="any" disabled required /></label>
                 <p class="hint wide">{t.billHint}</p>
               </div>
               <label class="wide">{t.daytimeShare}<select name="daytimeShare"><option value="away">{t.away} · {shareLabel(a.daytime_share.away)}</option><option value="partly_home">{t.partlyHome} · {shareLabel(a.daytime_share.partly_home)}</option><option value="mostly_home">{t.mostlyHome} · {shareLabel(a.daytime_share.mostly_home)}</option></select></label>
@@ -66,21 +67,21 @@ const shareLabel = (share: number) => new Intl.NumberFormat(lang === 'zh' ? 'zh-
           </fieldset>
           <fieldset class="form-section"><legend><span class="step-number">02</span>{t.systemSection}</legend>
             <div class="fields">
-              <label class="wide" data-new-solar>{t.solarKw}<input name="solarKw" type="number" min="0" step="any" value={a.solar_size_kw} required /></label>
-              <label class="wide" data-existing-solar hidden>{t.existingSolarKw}<input name="existingSolarKw" type="number" min="0" step="any" value={a.existing_solar_size_kw} disabled required /></label>
+              <label class="wide" data-new-solar>{t.solarKw}<input name="solarKw" type="number" min={numberFieldMin("solarKw")} step="any" value={a.solar_size_kw} required /></label>
+              <label class="wide" data-existing-solar hidden>{t.existingSolarKw}<input name="existingSolarKw" type="number" min={numberFieldMin("existingSolarKw")} step="any" value={a.existing_solar_size_kw} disabled required /></label>
               <label class="wide" data-battery-field hidden>{t.batteryKwh}<input name="batteryKwh" type="number" min="0" step="any" value={a.battery_usable_kwh} disabled required /><small>{t.usableHint}</small></label>
             </div>
           </fieldset>
           <fieldset class="form-section"><legend><span class="step-number">03</span>{t.quoteSection}</legend>
             <div class="fields">
-              <label class="wide" data-solar-quote>{t.solarQuote}<input name="solarQuote" type="number" min="0" step="any" value={quotes.solar_6_6kw_dollars} required /></label>
-              <label class="wide" data-battery-quote hidden>{t.batteryQuote}<input name="batteryQuote" type="number" min="0" step="any" value={quotes.battery_10kwh_dollars} disabled required /></label>
+              <label class="wide" data-solar-quote>{t.solarQuote}<input name="solarQuote" type="number" min="0" step="any" value={quotes.solar_6_6kw_dollars} required aria-describedby="solar-quote-required" /><small id="solar-quote-required" aria-live="polite" hidden>{t.solarQuoteRequired}</small></label>
+              <label class="wide" data-battery-quote hidden>{t.batteryQuote}<input name="batteryQuote" type="number" min="0" step="any" value={quotes.battery_10kwh_dollars} disabled required aria-describedby="battery-quote-required" /><small id="battery-quote-required" aria-live="polite" hidden>{t.batteryQuoteRequired}</small></label>
               <label class="wide">{t.quoteIncludesRebate}<select name="quoteIncludesRebate"><option value="yes">{t.yesRebate}</option><option value="no">{t.noRebate}</option></select></label>
               <label class="wide">{t.stcPrice}<input name="stcPrice" type="number" min="0" step="any" value={d.stc_price_dollars} required /></label>
               <p class="hint wide">{t.quoteHint}</p>
             </div>
           </fieldset>
-          <div id="form-error" class="form-error" role="alert" hidden></div>
+          <div id="form-error" class="form-error" role="alert" tabindex="-1" hidden></div>
           <button class="calculate" type="submit" disabled>{t.calculate}<span aria-hidden="true">→</span></button>
           <noscript><p class="notice">{t.noScript}</p></noscript>
         </form>

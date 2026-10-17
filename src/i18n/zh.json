@@ -1,7 +1,6 @@
 {
   "title": "在维州装太阳能和电池，几年能回本？",
   "sourcesTitle": "数据来源",
-  "comingSoon": "计算器开发中（v0.1）。",
   "batteryRebateEligibilityNotice": "电池补贴只适用于标称容量 5–100 kWh 的电池。",
   "netBenefitNote": "未计维护及资金成本",
   "calculatorTitle": "算清你家的阳光收益",
@@ -100,12 +99,10 @@
   "usageSource": "AER 维州三口之家四季用电基准",
   "tariffSource": "ESC 维州默认电价（VDO）",
   "assumptionsSource": "方案假设：白天用电占比、效率、衰减及涨价情景",
-  "errorTitle": "暂时无法计算",
   "inputError": "请检查必填项、日期和数字范围。",
   "postcodeError": "请输入已收录的四位维州邮编。",
   "billError": "无法用此账单估算，请检查总额、天数及电价。",
   "calculationError": "请核对电价、容量和报价；补贴前报价不得低于对应的估算补贴。输入过大时也无法计算。",
-  "fieldError": "请检查「{field}」。",
   "seasonalSource": "BOM 日照与 AER 季节用电",
   "batteryModelSource": "电池质保与寿命假设",
   "charge": "电池充电",
@@ -144,5 +141,10 @@
   "disclaimerEstimate": "计算结果是基于输入和简化模型的估算，不是发电量、省钱或回本的保证。四季平均日不能反映逐小时变化，日照未按具体屋顶朝向和倾角校正；实际用电、设备表现、政策和价格变化都会影响结果。",
   "disclaimerPrices": "默认安装报价来自第三方汇总或预测，属于二手来源，仅供参考，不能替代安装商根据实际现场情况提供的报价。",
   "disclaimerAdvice": "本工具仅提供一般信息，不构成财务或投资建议。",
-  "backToCalculator": "返回计算器"
+  "backToCalculator": "返回计算器",
+  "solarQuoteRequired": "此太阳能容量暂无参考价，请填写实际安装报价。",
+  "batteryQuoteRequired": "此电池容量暂无参考价，请填写实际安装报价。",
+  "positiveInputError": "请输入大于 0 的有限数值。",
+  "quoteRequiredError": "请填写此容量对应的实际安装报价。",
+  "rebateQuoteError": "补贴前报价不能低于该设备的估算补贴，请核对报价及是否已扣补贴。"
 }

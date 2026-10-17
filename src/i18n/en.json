@@ -1,7 +1,6 @@
 {
   "title": "Solar and batteries in Victoria: how long until they pay for themselves?",
   "sourcesTitle": "Data sources",
-  "comingSoon": "Calculator under construction (v0.1).",
   "batteryRebateEligibilityNotice": "The battery rebate only applies to batteries with a nominal capacity of 5–100 kWh.",
   "netBenefitNote": "Excludes maintenance and financing costs",
   "calculatorTitle": "Make sense of your solar savings",
@@ -100,12 +99,10 @@
   "usageSource": "AER seasonal usage benchmark for a three-person Victorian household",
   "tariffSource": "ESC Victorian Default Offer (VDO)",
   "assumptionsSource": "Model assumptions: daytime shares, efficiency, degradation and price scenarios",
-  "errorTitle": "Unable to calculate",
   "inputError": "Check required fields, dates and number ranges.",
   "postcodeError": "Enter a supported four-digit Victorian postcode.",
   "billError": "Cannot estimate usage from this bill. Check its total, billing days and tariff.",
   "calculationError": "Check tariffs, capacities and quotes. Pre-rebate quotes must cover the corresponding estimated rebate. Excessively large inputs cannot be calculated.",
-  "fieldError": "Check “{field}”.",
   "seasonalSource": "BOM sunlight and AER seasonal usage",
   "batteryModelSource": "Battery warranty and life assumptions",
   "charge": "Battery charging",
@@ -144,5 +141,10 @@
   "disclaimerEstimate": "Results are estimates based on your inputs and a simplified model, not guarantees of generation, savings or payback. Seasonal average days cannot capture hourly changes, and sunlight is not adjusted for your roof orientation or tilt. Actual usage, equipment performance, policy and price changes can affect the outcome.",
   "disclaimerPrices": "Default installation quotes are secondary sources based on third-party summaries or forecasts. They are references only and do not replace an installer's quote for your actual site.",
   "disclaimerAdvice": "This tool provides general information only and does not constitute financial or investment advice.",
-  "backToCalculator": "Back to calculator"
+  "backToCalculator": "Back to calculator",
+  "solarQuoteRequired": "No reference price is available for this solar capacity. Enter your actual installation quote.",
+  "batteryQuoteRequired": "No reference price is available for this battery capacity. Enter your actual installation quote.",
+  "positiveInputError": "Enter a finite number greater than 0.",
+  "quoteRequiredError": "Enter the actual installation quote for this capacity.",
+  "rebateQuoteError": "The pre-rebate quote must cover this system’s estimated rebate. Check the quote and whether rebates are already included."
 }

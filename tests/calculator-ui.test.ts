@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calculateProject } from '../src/lib/calc';
-import { FormInputError, readCalculatorForm, referenceQuote } from '../src/lib/calculator-ui';
+import { calculationFormError, FormInputError, numberFieldMin, readCalculatorForm, referenceQuote } from '../src/lib/calculator-ui';
 import { renderResults, paybackText } from '../src/lib/results';
 
 const fields = {
@@ -88,5 +88,56 @@ describe('结果呈现边界', () => {
     const html = renderResults(result, params, 'zh');
     expect(html).toContain('$0.650');
     expect(html).toContain('未计维护及资金成本');
+  });
+});
+
+describe('表单与引擎范围一致，错误关联字段', () => {
+  it.each([
+    ['importTariffCents', {}], ['solarKw', {}], ['existingSolarKw', { plan: 'battery_only' }],
+    ['batteryKwh', { plan: 'battery_only' }], ['billDays', { usageMode: 'bill', billTotal: '458.30' }],
+  ] as const)('%s 的表单最小值大于零，拒绝零并定位该字段', (name, overrides) => {
+    expect(numberFieldMin(name, 'plan' in overrides ? overrides.plan : undefined)).toBeGreaterThan(0);
+    try {
+      input({ ...overrides, [name]: '0' });
+      expect.unreachable('应拒绝零');
+    } catch (cause) {
+      expect(cause).toMatchObject({ key: 'positiveInputError', field: name });
+    }
+  });
+
+  it('正数约束不擅自增加政策下限，零用电、零 FiT 和零报价仍可用', () => {
+    expect(input({ solarKw: String(Number.MIN_VALUE) }).solarKw).toBe(Number.MIN_VALUE);
+    expect(input({ annualUsageKwh: '0', feedInTariffCents: '0', solarQuote: '0', stcPrice: '0' })).toMatchObject({
+      annualUsageKwh: 0, feedInTariffCents: 0, solarQuote: 0, stcPrice: 0,
+    });
+    expect(numberFieldMin('batteryKwh', 'solar_battery')).toBe(0);
+    expect(input({ usageMode: 'bill', billTotal: '458.30', billDays: '90.5' }).annualUsageKwh).toBeGreaterThan(0);
+  });
+
+  it.each([
+    [{ installationDate: '2026-02-30' }, 'installationDate'], [{ distributor: 'unknown' }, 'distributor'],
+    [{ annualUsageKwh: '-1' }, 'annualUsageKwh'], [{ solarQuote: '' }, 'solarQuote'],
+    [{ plan: 'solar_battery', batteryQuote: '' }, 'batteryQuote'],
+    [{ usageMode: 'bill', billTotal: '458.30', billDays: '0' }, 'billDays'],
+  ])('表单错误 %j 对应字段 %s', (overrides, field) => {
+    try { input(overrides); expect.unreachable('应拒绝无效表单'); }
+    catch (cause) { expect(cause).toMatchObject({ field }); }
+  });
+
+  it.each([
+    [{ solarQuote: '0' }, 'solarQuote'],
+    [{ plan: 'solar_battery', batteryQuote: '0' }, 'batteryQuote'],
+  ])('补贴超过对应报价时定位 %s', (overrides, field) => {
+    const params = input({ ...overrides, quoteIncludesRebate: 'no' });
+    try { calculateProject(params); expect.unreachable('应拒绝补贴超过报价'); }
+    catch (cause) { expect(calculationFormError(cause, params)).toMatchObject({ key: 'rebateQuoteError', field }); }
+  });
+
+  it('引擎的 schema 路径仍映射至相应字段，溢出定位最近编辑项', () => {
+    const params = input();
+    try { calculateProject({ ...params, importTariffCents: 0 }); expect.unreachable('应拒绝零电价'); }
+    catch (cause) { expect(calculationFormError(cause, params).field).toBe('importTariffCents'); }
+    expect(calculationFormError(new RangeError('输入过大，计算结果超出数值范围'), params, 'feedInTariffCents'))
+      .toMatchObject({ key: 'calculationError', field: 'feedInTariffCents' });
   });
 });

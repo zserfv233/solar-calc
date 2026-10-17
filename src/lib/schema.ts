@@ -145,3 +145,19 @@ export const seasonalVicSchema = z.object({
   }),
 });
 
+/** 跨文件约束必须在运行时加载数据时执行，不能只依赖测试覆盖。 */
+export const projectDataSchema = z.object({
+  postcodes: postcodesSchema,
+  stcZones: stcZonesSchema,
+  batteryRebate: batteryRebateSchema,
+  defaultsVic: defaultsVicSchema,
+  seasonalVic: seasonalVicSchema,
+}).superRefine((data, ctx) => {
+  for (const zone of new Set(data.postcodes.values.ranges.map((range) => String(range.zone)))) {
+    if (!Object.hasOwn(data.seasonalVic.values.solar_mj_per_m2_day_by_zone, zone)) {
+      ctx.addIssue({ code: 'custom', path: ['seasonalVic', 'values', 'solar_mj_per_m2_day_by_zone', zone],
+        message: `邮编分区 ${zone} 缺少季节日照记录` });
+    }
+  }
+});
+
