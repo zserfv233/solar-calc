@@ -1,8 +1,9 @@
 // 数据校验规则（Zod）。范围来自执行方案「数据文件与校验规则」一节；超出范围时构建失败。
 import { z } from 'zod';
 
+const sourceUrl = z.url({ protocol: /^https$/ });
 const meta = {
-  source: z.union([z.url(), z.array(z.url()).min(1)]),
+  source: z.union([sourceUrl, z.array(sourceUrl).min(1)]),
   source_note: z.string().optional(),
   last_checked: z.iso.date(),
   checked_by: z.enum(['human', 'ai']),
