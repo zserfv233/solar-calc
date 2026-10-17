@@ -31,7 +31,7 @@ const shareLabel = (share: number) => new Intl.NumberFormat(lang === 'zh' ? 'zh-
   <body data-language={lang}>
     <header class="site-header">
       <a class="brand" href={`/${lang}/`} aria-label="solar-calc"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 24h24M8 20a8 8 0 0 1 16 0M16 4v4M5 9l3 3M27 9l-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>solar<span>calc</span></a>
-      <nav aria-label={t.calculator}><a href="#defaults">{t.sourcesTitle}</a><a id="language-switch" lang={lang === 'zh' ? 'en' : 'zh'} href={lang === 'zh' ? '/en/' : '/zh/'}>{t.languageSwitch}<span aria-hidden="true"> ↗</span></a></nav>
+      <nav aria-label={t.calculator}><a href={`/${lang}/sources/`}>{t.sourcesTitle}</a><a id="language-switch" lang={lang === 'zh' ? 'en' : 'zh'} href={lang === 'zh' ? '/en/' : '/zh/'}>{t.languageSwitch}<span aria-hidden="true"> ↗</span></a></nav>
     </header>
     <main>
       <section class="hero">
@@ -98,7 +98,7 @@ const shareLabel = (share: number) => new Intl.NumberFormat(lang === 'zh' ? 'zh-
         <div id="result-content"></div>
       </section>
     </main>
-    <footer><a href={`/${lang}/`}>solar-calc</a><p>{t.privacy}</p><p>v0.1</p></footer>
+    <footer><a href={`/${lang}/sources/#disclaimer`}>{t.disclaimerTitle}</a><p>{t.privacy}</p><p>v0.1</p></footer>
     <script>
       import '../scripts/calculator';
     </script>
