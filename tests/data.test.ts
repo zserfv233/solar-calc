@@ -31,7 +31,7 @@ describe('data/ 校验', () => {
     expect(postcodesSchema.safeParse({ ...postcodesRaw, source: [postcodesRaw.source, source] }).success).toBe(false);
   });
 
-  it.each(['typical_quotes_after_rebate', 'battery_warranty', 'battery_expected_life'] as const)(
+  it.each(['typical_quotes_after_rebate', 'battery_warranty', 'battery_expected_life', 'home_system_scope'] as const)(
     '嵌套元数据 %s 同样拒绝非 HTTPS 来源', (key) => {
       const bad = structuredClone(defaultsVicRaw);
       const source = postcodesRaw.source.replace(/^https:/, 'http:');

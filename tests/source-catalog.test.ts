@@ -11,7 +11,8 @@ describe('来源页的元数据目录', () => {
     expect(records.map((record) => record.id)).toEqual([
       'postcodes-vic.json', 'stc-zones.json', 'battery-rebate.json', 'defaults-vic.json',
       'defaults-vic.json/values/typical_quotes_after_rebate',
-      'defaults-vic.json/values/battery_warranty', 'defaults-vic.json/values/battery_expected_life', 'seasonal-vic.json',
+      'defaults-vic.json/values/battery_warranty', 'defaults-vic.json/values/battery_expected_life',
+      'defaults-vic.json/values/home_system_scope', 'seasonal-vic.json',
     ]);
     expect(records.find((record) => record.id.endsWith('/battery_warranty'))?.urls).toEqual(defaultsVic.values.battery_warranty.source);
   });

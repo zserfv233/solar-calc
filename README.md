@@ -163,6 +163,7 @@ X = E − B
 
 ## 已知局限
 
+- **容量范围**：新装和已有太阳能均限于 100 kW（含）以内，v0.1 不实现中型系统规则，上限与 CER 来源见 [defaults-vic.json](data/defaults-vic.json) 的 `home_system_scope`。
 - **四季平均日**：不能还原逐小时的发电与用电重合、天气波动、充放电调度和功率约束；模型适合估算和对比，不是设备设计或逐时仿真。
 - **水平面辐照**：BOM 数据未按屋顶朝向、倾角、遮挡和温度修正，不能笼统声称结果一定偏保守。依据：[seasonal-vic.json](data/seasonal-vic.json) 的 `source_note`。
 - **两个站点代表分区**：分区 4 使用 Melbourne Olympic Park，分区 3 使用 Bendigo Airport；同分区邮编不意味着相同微气候或屋顶条件。站点与分区来源：[seasonal-vic.json](data/seasonal-vic.json)。

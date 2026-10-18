@@ -88,6 +88,16 @@
       "checked_by": "human",
       "lithium_ion_years_min": 10,
       "lithium_ion_years_max": 15
+    },
+    "home_system_scope": {
+      "source": [
+        "https://cer.gov.au/schemes/renewable-energy-target/small-scale-renewable-energy-scheme/small-scale-renewable-energy-systems/solar-batteries",
+        "https://cer.gov.au/schemes/renewable-energy-target/small-scale-renewable-energy-scheme/small-scale-renewable-energy-systems/mid-scale-solar"
+      ],
+      "source_note": "CER 电池补贴要求配套新装或已有太阳能不超过 100 kW；中型太阳能（100 kW–1 MW）另有视同年限等规则。用户决定 v0.1 的新装及已有太阳能容量均限于 100 kW（含）以内，超出即拒绝，不实现中型系统规则。这是计算器的适用范围，不表示超出范围的系统一律不享受补贴。",
+      "last_checked": "2026-10-18",
+      "checked_by": "ai",
+      "solar_capacity_max_kw": 100
     }
   }
 }

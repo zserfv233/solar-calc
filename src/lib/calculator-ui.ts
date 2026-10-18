@@ -14,6 +14,12 @@ export function numberFieldMin(name: string, plan?: string): number {
     || (name === 'batteryKwh' && plan === 'battery_only') ? Number.MIN_VALUE : 0;
 }
 
+/** 表单和引擎共用 data/ 记录的家用太阳能容量范围。 */
+export function numberFieldMax(name: string): number | undefined {
+  return name === 'solarKw' || name === 'existingSolarKw'
+    ? defaultsVic.values.home_system_scope.solar_capacity_max_kw : undefined;
+}
+
 /** 容量取自报价字段的单位标记；只匹配已有参考项，不插值或估算报价。 */
 export function referenceQuote(system: 'solar' | 'battery', size: number): number | null {
   for (const [key, value] of Object.entries(defaultsVic.values.typical_quotes_after_rebate)) {
@@ -29,7 +35,7 @@ export function message(lang: Language, key: MessageKey, values: Record<string, 
 
 export class FormInputError extends Error {
   constructor(public key: 'inputError' | 'postcodeError' | 'billError' | 'calculationError'
-    | 'positiveInputError' | 'quoteRequiredError' | 'rebateQuoteError', public field?: string) {
+    | 'positiveInputError' | 'quoteRequiredError' | 'rebateQuoteError' | 'homeSystemRangeError', public field?: string) {
     super(key);
   }
 }
@@ -38,7 +44,11 @@ export class FormInputError extends Error {
 export function calculationFormError(cause: unknown, input?: CalculationInput, editedField?: string): FormInputError {
   if (cause instanceof FormInputError) return cause;
   if (cause instanceof ZodError) {
-    const path = cause.issues[0]?.path[0];
+    const issue = cause.issues[0];
+    const path = issue?.path[0];
+    if (issue?.code === 'too_big' && typeof path === 'string' && numberFieldMax(path) !== undefined) {
+      return new FormInputError('homeSystemRangeError', path);
+    }
     return new FormInputError('inputError', typeof path === 'string' ? (path === 'mode' ? 'plan' : path) : 'batteryKwh');
   }
   if (cause instanceof RangeError && cause.message === '补贴超过对应报价，请核对报价是否已扣补贴' && input) {
@@ -79,6 +89,8 @@ export function readCalculatorForm(form: FormData): CalculationInput {
     const number = Number(value);
     const min = numberFieldMin(name, text('plan'));
     if (!Number.isFinite(number) || number < min) throw new FormInputError(min > 0 ? 'positiveInputError' : 'inputError', name);
+    const max = numberFieldMax(name);
+    if (max !== undefined && number > max) throw new FormInputError('homeSystemRangeError', name);
     return number;
   };
   const plan = text('plan');
