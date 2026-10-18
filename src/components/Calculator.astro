@@ -1,6 +1,6 @@
 ---
 import { defaultsVic } from '../lib/data';
-import { dictionaries, numberFieldMin, type Language } from '../lib/calculator-ui';
+import { dictionaries, numberFieldMax, numberFieldMin, type Language } from '../lib/calculator-ui';
 import { sourcesById } from '../lib/sources';
 import '../styles/calculator.css';
 
@@ -67,8 +67,8 @@ const shareLabel = (share: number) => new Intl.NumberFormat(lang === 'zh' ? 'zh-
           </fieldset>
           <fieldset class="form-section"><legend><span class="step-number">02</span>{t.systemSection}</legend>
             <div class="fields">
-              <label class="wide" data-new-solar>{t.solarKw}<input name="solarKw" type="number" min={numberFieldMin("solarKw")} step="any" value={a.solar_size_kw} required /></label>
-              <label class="wide" data-existing-solar hidden>{t.existingSolarKw}<input name="existingSolarKw" type="number" min={numberFieldMin("existingSolarKw")} step="any" value={a.existing_solar_size_kw} disabled required /></label>
+              <label class="wide" data-new-solar>{t.solarKw}<input name="solarKw" type="number" min={numberFieldMin("solarKw")} max={numberFieldMax("solarKw")} step="any" value={a.solar_size_kw} required /></label>
+              <label class="wide" data-existing-solar hidden>{t.existingSolarKw}<input name="existingSolarKw" type="number" min={numberFieldMin("existingSolarKw")} max={numberFieldMax("existingSolarKw")} step="any" value={a.existing_solar_size_kw} disabled required /></label>
               <label class="wide" data-battery-field hidden>{t.batteryKwh}<input name="batteryKwh" type="number" min="0" step="any" value={a.battery_usable_kwh} disabled required /><small>{t.usableHint}</small></label>
             </div>
           </fieldset>

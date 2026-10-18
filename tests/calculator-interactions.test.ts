@@ -2,10 +2,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import template from '../src/components/Calculator.astro?raw';
 import { defaultsVic } from '../src/lib/data';
-import { numberFieldMin } from '../src/lib/calculator-ui';
+import { numberFieldMax, numberFieldMin, type Language } from '../src/lib/calculator-ui';
 
 // 无新增 DOM 依赖：执行真实页面脚本，用最小表单接口覆盖事件、禁用状态、提示和聚焦。
-// 原生 number 输入的 min/required 另由模板契约检查，财务结果仍由既有手算测试负责。
+// 原生 number 输入的 min/max/required 另由模板契约检查，财务结果仍由既有手算测试负责。
 const NativeFormData = globalThis.FormData;
 class Control {
   disabled = false;
@@ -26,7 +26,9 @@ class Control {
   get validity() {
     const valueMissing = this.type !== 'hidden' && this.value === '';
     const rangeUnderflow = this.type === 'number' && this.value !== '' && Number(this.value) < Number(this.getAttribute('min') ?? 0);
-    return { valueMissing, rangeUnderflow, valid: this.disabled || !(valueMissing || rangeUnderflow) };
+    const max = this.getAttribute('max');
+    const rangeOverflow = this.type === 'number' && this.value !== '' && max !== null && Number(this.value) > Number(max);
+    return { valueMissing, rangeUnderflow, rangeOverflow, valid: this.disabled || !(valueMissing || rangeUnderflow || rangeOverflow) };
   }
 }
 
@@ -35,7 +37,7 @@ let elements: Record<string, Control>;
 let emit: (name: string, field?: string, value?: string) => void;
 let session: Map<string, string>;
 
-async function boot() {
+async function boot(language: Language = 'zh') {
   vi.resetModules();
   const d = defaultsVic.values;
   const a = d.assumptions_from_plan;
@@ -54,9 +56,19 @@ async function boot() {
     const type = tag?.match(/type="([^"]+)"/)?.[1] ?? 'select';
     const control = new Control(name, value, type);
     if (type === 'number') control.setAttribute('min', String(numberFieldMin(name)));
+    const max = numberFieldMax(name);
+    if (max !== undefined) control.setAttribute('max', String(max));
     if (name.endsWith('Quote')) control.setAttribute('aria-describedby', `${name.startsWith('solar') ? 'solar' : 'battery'}-quote-required`);
     return [name, control];
   }));
+  // 恢复方案时脚本逐个设置 radio.checked，需要保留实际的单选组而非单个可变值。
+  const planRadios = [...template.matchAll(/<input\b[^>]*name="plan"[^>]*>/g)].map(([tag]) => {
+    const radio = new Control('plan', tag.match(/value="([^"]+)"/)![1], 'radio');
+    radio.checked = radio.value === initial.plan;
+    return radio;
+  });
+  Object.defineProperty(controls, 'plan', { get: () => planRadios.find((radio) => radio.checked) ?? planRadios[0] });
+  const allControls = () => Object.values(controls).flatMap((control) => control.name === 'plan' ? planRadios : [control]);
   const groups: Record<string, string[]> = {
     '[data-new-solar]': ['solarKw'], '[data-existing-solar]': ['existingSolarKw'],
     '[data-battery-field]': ['batteryKwh'], '[data-solar-quote]': ['solarQuote'], '[data-battery-quote]': ['batteryQuote'],
@@ -71,12 +83,12 @@ async function boot() {
       const name = selector.match(/^\[name="([^"]+)"\]$/)?.[1];
       return name ? controls[name] : null;
     },
-    querySelectorAll: (selector: string) => Object.values(controls).filter((control) => selector !== '[aria-invalid="true"]' || control.getAttribute('aria-invalid') === 'true'),
+    querySelectorAll: (selector: string) => allControls().filter((control) => selector !== '[aria-invalid="true"]' || control.getAttribute('aria-invalid') === 'true'),
     checkValidity: () => Object.values(controls).every((control) => control.validity.valid),
   });
   elements = Object.fromEntries(['#results', '#result-content', '#form-error', '#supply-charge', '#language-switch',
     '#results-heading', '#solar-quote-required', '#battery-quote-required', 'button'].map((id) => [id, new Control()]));
-  vi.stubGlobal('document', { body: { dataset: { language: 'zh' } }, querySelector: (selector: string) => selector === '#calculator-form' ? form : elements[selector] });
+  vi.stubGlobal('document', { body: { dataset: { language } }, querySelector: (selector: string) => selector === '#calculator-form' ? form : elements[selector] });
   vi.stubGlobal('CSS', { escape: (value: string) => value });
   vi.stubGlobal('window', { localStorage: { setItem: vi.fn() }, matchMedia: () => ({ matches: true }) });
   vi.stubGlobal('sessionStorage', {
@@ -86,12 +98,15 @@ async function boot() {
   vi.stubGlobal('FormData', class extends NativeFormData {
     constructor(source?: typeof form) {
       super();
-      if (source) for (const control of Object.values(controls)) if (!control.disabled) this.set(control.name, control.value);
+      if (source) for (const control of allControls()) {
+        if (!control.disabled && (control.type !== 'radio' || control.checked)) this.set(control.name, control.value);
+      }
     }
   });
   emit = (name, field, value) => {
+    if (field === 'plan' && value !== undefined) planRadios.forEach((radio) => { radio.checked = radio.value === value; });
     const target = field ? controls[field] : undefined;
-    if (target && value !== undefined) target.value = value;
+    if (target && field !== 'plan' && value !== undefined) target.value = value;
     form.listeners.get(name)?.({ target, preventDefault() {} });
   };
   await import('../src/scripts/calculator');
@@ -187,6 +202,129 @@ describe('页面报价与字段错误事件', () => {
 
 it('模板中正数字段使用统一下限；允许小数账期以匹配引擎', () => {
   for (const name of ['importTariffCents', 'solarKw', 'existingSolarKw', 'billDays']) {
-    expect(template).toMatch(new RegExp(`name="${name}" type="number" min=\\{numberFieldMin\\("${name}"\\)\\} step="any"`));
+    expect(template).toMatch(new RegExp(`name="${name}" type="number" min=\\{numberFieldMin\\("${name}"\\)\\}[^>]* step="any"`));
+  }
+});
+
+describe.each(['solarKw', 'existingSolarKw'])('%s 页面容量范围', (name) => {
+  it('100 kW 可提交，模板上限来自数据', () => {
+    expect(template).toContain(`max={numberFieldMax("${name}")}`);
+    if (name === 'existingSolarKw') emit('change', 'plan', 'battery_only');
+    emit('input', 'solarQuote', '6200');
+    emit('change', name, '100');
+    emit('submit');
+    expect(controls[name].getAttribute('max')).toBe('100');
+    expect(elements['#form-error'].hidden).toBe(true);
+    expect(elements['#results'].hidden).toBe(false);
+  });
+
+  it.each([
+    ['zh', '100.01'], ['zh', '101'], ['en', '100.01'], ['en', '101'],
+  ] as const)('%s 页面拒绝 %s kW，显示范围提示、聚焦并关联对应字段', async (language, capacity) => {
+    await boot(language);
+    if (name === 'existingSolarKw') emit('change', 'plan', 'battery_only');
+    emit('input', name, capacity);
+    emit('submit');
+    expect(elements['#results'].hidden).toBe(true);
+    expect(elements['#form-error'].hidden).toBe(false);
+    expect(elements['#form-error'].textContent).toContain(language === 'zh'
+      ? '超出家用计算范围' : 'Outside the home-system range of this calculator');
+    expect(controls[name].focus).toHaveBeenCalled();
+    expect(controls[name].getAttribute('aria-invalid')).toBe('true');
+    expect(controls[name].getAttribute('aria-describedby')).toContain('form-error');
+    emit('input', name, '100');
+    expect(controls[name].getAttribute('aria-invalid')).toBeNull();
+  });
+});
+
+describe.each([
+  ['solar_only', 'solarKw', 'battery_only'],
+  ['solar_battery', 'solarKw', 'battery_only'],
+  ['battery_only', 'existingSolarKw', 'solar_battery'],
+])('%s 容量范围状态回归', (plan, name, otherPlan) => {
+  it.each([
+    [true, '100.01'], [true, '101'], [false, '100.01'], [false, '101'],
+  ] as const)('恢复 hasResult=%s、容量 %s：不展示结果，恢复计算或提交时关联字段', async (hasResult, capacity) => {
+    emit('input', 'solarQuote', '6200');
+    emit('change', 'plan', plan);
+    emit('input', name, capacity);
+    // 模拟旧版已保存的超限输入，包括当时已算出结果的状态。
+    const storageKey = 'solar-calc-language-transfer';
+    session.set(storageKey, JSON.stringify({
+      entries: Object.values(controls).map((control) => [control.name, control.value]), hasResult,
+    }));
+    const language = hasResult ? 'en' : 'zh';
+    await boot(language);
+    expect(session.has(storageKey)).toBe(false);
+    expect(controls[name].value).toBe(capacity);
+    expect(controls[name].disabled).toBe(false);
+    expect(elements['#results'].hidden).toBe(true);
+    expect(elements['#result-content'].innerHTML).toBe('');
+    if (!hasResult) {
+      expect(elements['#form-error'].hidden).toBe(true);
+      expect(controls[name].getAttribute('aria-invalid')).toBeNull();
+      expect(controls[name].focus).not.toHaveBeenCalled();
+      emit('submit');
+    }
+    expect(elements['#form-error'].hidden).toBe(false);
+    expect(elements['#form-error'].textContent).toContain(hasResult
+      ? 'Outside the home-system range of this calculator' : '超出家用计算范围');
+    expect(controls[name].focus).toHaveBeenCalled();
+    expect(controls[name].getAttribute('aria-invalid')).toBe('true');
+    expect(controls[name].getAttribute('aria-describedby')).toContain('form-error');
+    emit('input', name, '100');
+    emit('submit');
+    expect(elements['#form-error'].hidden).toBe(true);
+    expect(elements['#results'].hidden).toBe(false);
+  });
+
+  it.each(['100.01', '101'])('字段 %s 超限后切换方案可计算，切回仍拒绝，修正后可计算', (capacity) => {
+    emit('input', 'solarQuote', '6200');
+    emit('change', 'plan', plan);
+    emit('input', name, capacity);
+    emit('submit');
+    expect(controls[name].getAttribute('aria-invalid')).toBe('true');
+    emit('change', 'plan', otherPlan);
+    expect(controls[name].disabled).toBe(true);
+    expect(controls[name].getAttribute('aria-invalid')).toBeNull();
+    expect(elements['#form-error'].hidden).toBe(true);
+    emit('submit');
+    expect(elements['#results'].hidden).toBe(false);
+    controls[name].focus.mockClear();
+    emit('change', 'plan', plan);
+    expect(controls[name].value).toBe(capacity);
+    expect(controls[name].disabled).toBe(false);
+    expect(elements['#results'].hidden).toBe(true);
+    emit('submit');
+    expect(elements['#form-error'].textContent).toContain('超出家用计算范围');
+    expect(elements['#results'].hidden).toBe(true);
+    expect(controls[name].focus).toHaveBeenCalled();
+    expect(controls[name].getAttribute('aria-invalid')).toBe('true');
+    expect(controls[name].getAttribute('aria-describedby')).toContain('form-error');
+    emit('input', name, '100');
+    emit('submit');
+    expect(elements['#form-error'].hidden).toBe(true);
+    expect(elements['#results'].hidden).toBe(false);
+  });
+});
+
+it.each([
+  ['zh', '100'], ['zh', '100.01'], ['zh', '101'],
+  ['en', '100'], ['en', '100.01'], ['en', '101'],
+] as const)('solar_battery %s 页面容量 %s 的边界提交', async (language, capacity) => {
+  await boot(language);
+  emit('change', 'plan', 'solar_battery');
+  emit('input', 'solarQuote', '6200');
+  emit('change', 'solarKw', capacity);
+  emit('submit');
+  const accepted = capacity === '100';
+  expect(elements['#results'].hidden).toBe(!accepted);
+  expect(elements['#form-error'].hidden).toBe(accepted);
+  if (!accepted) {
+    expect(elements['#form-error'].textContent).toContain(language === 'zh'
+      ? '超出家用计算范围' : 'Outside the home-system range of this calculator');
+    expect(controls.solarKw.focus).toHaveBeenCalled();
+    expect(controls.solarKw.getAttribute('aria-invalid')).toBe('true');
+    expect(controls.solarKw.getAttribute('aria-describedby')).toContain('form-error');
   }
 });

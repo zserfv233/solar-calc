@@ -108,6 +108,11 @@ export const defaultsVicSchema = z.object({
         lithium_ion_years_max: z.number().int().min(1).max(30),
       })
       .refine((v) => v.lithium_ion_years_min <= v.lithium_ion_years_max, '寿命下限不能大于上限'),
+      home_system_scope: z.object({
+        ...meta,
+        source_note: z.string().trim().min(1),
+        solar_capacity_max_kw: z.number().positive(),
+      }),
       assumptions_from_plan: z.object({
         daytime_share: z.object({ away: fraction, partly_home: fraction, mostly_home: fraction }),
         solar_size_kw: z.number().positive(),

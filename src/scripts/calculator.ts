@@ -1,6 +1,6 @@
 import { defaultsVic } from '../lib/data';
 import { calculateProject, type CalculationInput } from '../lib/calc';
-import { calculationFormError, clearFieldError, FormInputError, markFieldInvalid, message, numberFieldMin, readCalculatorForm, referenceQuote, type Language } from '../lib/calculator-ui';
+import { calculationFormError, clearFieldError, FormInputError, markFieldInvalid, message, numberFieldMax, numberFieldMin, readCalculatorForm, referenceQuote, type Language } from '../lib/calculator-ui';
 import { money, renderResults } from '../lib/results';
 import { saveLanguage } from '../lib/language';
 import { batteryQuoteForCapacity, quoteForCapacity, TariffSelection } from '../lib/form-behavior';
@@ -62,6 +62,7 @@ function calculate(scroll: boolean) {
     if (!form.checkValidity()) {
       const invalid = form.querySelector<HTMLInputElement | HTMLSelectElement>('input:invalid, select:invalid')!;
       const key = invalid.validity.valueMissing && invalid.name.endsWith('Quote') ? 'quoteRequiredError'
+        : invalid.validity.rangeOverflow && numberFieldMax(invalid.name) !== undefined ? 'homeSystemRangeError'
         : invalid.validity.rangeUnderflow && numberFieldMin(invalid.name, value('plan')) > 0 ? 'positiveInputError' : 'inputError';
       throw new FormInputError(key, invalid.name);
     }

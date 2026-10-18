@@ -11,12 +11,13 @@ const daysPerYear = seasonal.days_in_month.reduce((a, b) => a + b, 0);
 const forecastYears = 30;
 const netBenefitYears = 10;
 const nonNegative = z.number().nonnegative();
+const solarCapacity = nonNegative.max(defaults.home_system_scope.solar_capacity_max_kw);
 const inputSchema = z.object({
   mode: z.enum(['solar', 'battery_only']),
   postcode: z.number().int(),
   installationDate: z.iso.date(),
-  solarKw: z.number().positive().default(assumptions.solar_size_kw),
-  existingSolarKw: z.number().positive().default(assumptions.existing_solar_size_kw),
+  solarKw: solarCapacity.positive().default(assumptions.solar_size_kw),
+  existingSolarKw: solarCapacity.positive().default(assumptions.existing_solar_size_kw),
   batteryKwh: nonNegative,
   daytimeShare: z.enum(['away', 'partly_home', 'mostly_home']),
   annualUsageKwh: nonNegative.default(defaults.annual_usage_kwh),
@@ -77,7 +78,7 @@ export function batteryStcs(capacityKwh: number, installationDate: string): StcE
 }
 
 export function panelStcs(solarKw: number, postcode: number, installationDate: string): StcEntitlement {
-  nonNegative.parse(solarKw);
+  solarCapacity.parse(solarKw);
   z.iso.date().parse(installationDate);
   const zone = zoneForPostcode(postcode);
   if (solarKw === 0) return { count: 0, applicable: false, reason: 'no_system' };
