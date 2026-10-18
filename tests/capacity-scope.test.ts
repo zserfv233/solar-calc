@@ -20,7 +20,7 @@ function formInput(plan: string, field: string, capacity: number) {
 }
 
 describe.each([
-  ['solarKw', 'solar_only'], ['existingSolarKw', 'battery_only'],
+  ['solarKw', 'solar_only'], ['solarKw', 'solar_battery'], ['existingSolarKw', 'battery_only'],
 ])('%s 的家用计算范围', (field, plan) => {
   it('表单和计算入口接受 100 kW', () => {
     const input = formInput(plan, field, 100);
