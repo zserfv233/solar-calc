@@ -3,7 +3,7 @@ import defaultsRaw from '../data/defaults-vic.json';
 import { calculateProject, panelStcs, type CalculationInput } from '../src/lib/calc';
 import { calculationFormError, message, readCalculatorForm } from '../src/lib/calculator-ui';
 import { defaultsVicSchema } from '../src/lib/schema';
-import { sourceCatalog } from '../src/lib/source-catalog';
+import { sourceCatalog, sourceReviewLabel } from '../src/lib/source-catalog';
 
 // 容量边界是用户确认、CER 来源支持的范围要求；不新增财务结果期望值。
 const fields = {
@@ -54,14 +54,17 @@ it('单独调用面板 STC 入口也遵守范围上限，保留无面板路径',
 });
 
 describe('容量范围数据与元数据', () => {
-  it('上限与 CER 来源独立记录核对日期和 ai 状态，来源页可收录', () => {
+  it('上限与 CER 来源记录人工核对状态，来源页显示中英人工核对标签', () => {
     const scope = defaultsVicSchema.parse(defaultsRaw).values.home_system_scope;
     expect(scope.solar_capacity_max_kw).toBe(100);
     expect(scope.last_checked).toBe('2026-10-18');
-    expect(scope.checked_by).toBe('ai');
-    expect(sourceCatalog().find((record) => record.id.endsWith('/home_system_scope'))).toMatchObject({
-      urls: scope.source, lastChecked: scope.last_checked, checkedBy: 'ai',
+    expect(scope.checked_by).toBe('human');
+    const record = sourceCatalog().find((record) => record.id.endsWith('/home_system_scope'))!;
+    expect(record).toMatchObject({
+      urls: scope.source, lastChecked: scope.last_checked, checkedBy: 'human',
     });
+    expect(sourceReviewLabel(record.checkedBy, 'zh')).toBe('人工核对');
+    expect(sourceReviewLabel(record.checkedBy, 'en')).toBe('Human reviewed');
   });
 
   it.each([0, -1, Infinity, NaN])('无效上限 %s 被数据 schema 拒绝', (limit) => {
