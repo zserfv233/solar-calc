@@ -1,6 +1,6 @@
 # 上线前检查记录
 
-检查日期：2026-10-18（Australia/Melbourne）。被测代码：`ae488a50dca33be5b2cca8750ced6fc38ec59d6f`，分支：`codex/step-12-checklist`。
+检查日期：2026-10-18（Australia/Melbourne）。初检基线：`ae488a50dca33be5b2cca8750ced6fc38ec59d6f`，检查分支：`codex/step-12-checklist`。F01 补验针对修复分支 `codex/f01-capacity-cap` 的最终提交 [`870312e`](https://github.com/zserfv233/solar-calc/commit/870312e0d62eb78333b2941b2649a924f3730986)；下文注明补验的结果来自该修复版本，其余证据保留初检基线口径。
 
 依据：项目规划中的完成标准、已确认的追加核查要求，以及现有代码和独立手算。本轮只记录，不修复代码、不更新数据、不修改测试或期望值、不增加依赖。
 
@@ -8,30 +8,30 @@
 
 ## 结论与计数口径
 
-主表共 **32 项：通过 23 项、未通过 1 项、需用户确认 8 项**。细节表和观察记录不重复计数。
+主表共 **32 项：通过 24 项、未通过 0 项、需用户确认 8 项**。细节表和观察记录不重复计数。
 
 - **通过**：已实际执行自动检查，或有可定位的代码、测试和原始来源证据；不等同于完成实机浏览器验收。
-- **未通过**：发现可复现的问题。本轮不修复；详见 F01。
+- **未通过**：仍存在可复现的问题；当前无此类条目，原 F01 已修复并补验通过，历史复现保留在下方。
 - **需用户确认**：设备、浏览器或部署现场确认尚未完成，或需要用户明确范围。未检查的项目不标为通过。
 
-自动测试和静态构建通过，但目前不能把整个上线检查标为完成。应在人工检查点确认 F01 的处理方式及所有待确认项后，再由用户决定是否合并上线。
+自动测试和静态构建通过，F01 已按用户决定限制容量并完成补验；修复分支尚不等于正式部署。仍需在人工检查点完成所有待确认项，再由用户决定是否合并上线。
 
 ## 逐项检查
 
 | ID | 检查项 | 结果 | 证据与范围 |
 | --- | --- | --- | --- |
 | LC01 | 正确基线、独立分支与变更范围 | 通过 | `git log -1 --oneline` 为 `ae488a5 Merge pull request #9`；开始时 `git status --short` 为空。交付只增加本报告，见下方变更检查命令。 |
-| LC02 | 类型检查与全部自动测试 | 通过 | `npm test` 执行 `tsc --noEmit && vitest run`，12 个测试文件、176 项全部通过；命令定义见 [`package.json:10`](../package.json#L10)。 |
+| LC02 | 类型检查与全部自动测试 | 通过 | `npm test` 执行 `tsc --noEmit && vitest run`，初检为 12 个测试文件、176 项全部通过；F01 最终版本补验为 13 个文件、233 项全部通过，见下方 F01。命令定义见 [`package.json:10`](../package.json#L10)。 |
 | LC03 | 静态构建、路由与资源完整性 | 通过 | `npm run build` 成功生成 5 页；本地预览 `/`、`/zh/`、`/en/` 及两种语言的 `/sources/` 均为 HTTP 200；构建产物中的内部链接、锚点和本地脚本资源检查发现 0 个断链。 |
 | LC04 | 三个独立手算用例误差及手算文件一致性 | 通过 | [`tests/calc.test.ts:64`](../tests/calc.test.ts#L64) 将相对误差限制为小于 1%；三个用例见该文件第 20、35、49 行及 [`hand-calc.md:18`](../tests/fixtures/hand-calc.md#L18)。只在内存中跳过脚本写文件调用后重算，生成文字与现有手算文件完全一致，未写回文件。 |
 | LC05 | 抽三个邮编，对照 CER 原表及实际计算入口 | 通过 | 3000 → 4 区 / 1.185；3350 → 3 区 / 1.382；8000 → 4 区 / 1.185。CER 表项、PDF 页码、本地行号及运行输出见下方“邮编抽查”。 |
 | LC06 | 已收录的小型系统 STC 年份、系数、分档及资格日期 | 通过 | [CER 计算规则](https://cer.gov.au/schemes/renewable-energy-target/small-scale-renewable-energy-scheme/small-scale-technology-certificates/calculate-small-scale-technology-certificate-entitlements) 的视同年限表和电池系数表与 [`stc-zones.json:11`](../data/stc-zones.json#L11)、[`battery-rebate.json:12`](../data/battery-rebate.json#L12) 一致；分档和日期见该电池文件第 69、87 行。此项仅核对当前已收录的小型模型，不代表适用所有容量，见 LC12。 |
 | LC07 | 电池补贴对安装商公开示例 | 通过 | 同一政策期的 10 kWh → 68 张、20 kWh → 119 张，与 [Steel City Solar 的公开示例](https://www.steelcitysolar.com.au/cheaper-home-batteries-rebate) 一致。只比较联邦 STC，不套用其新州州级优惠或不同单价；该页其他行的差异也已记录，见下方详情。 |
-| LC08 | 默认值来源、核对日期及复核状态完整 | 通过 | 数据含 8 个根或嵌套元数据记录，均有来源、日期及 `human` 标记；日期为 2026-10-15 或 2026-10-16。默认值入口见 [`Calculator.astro:90`](../src/components/Calculator.astro#L90)，命名来源及各自日期见 [`sources.ts:20`](../src/lib/sources.ts#L20)。假设与二手参考价仍按备注区分，不把 `human` 解释为官方保证。 |
+| LC08 | 默认值来源、核对日期及复核状态完整 | 通过 | 初检 8 条元数据均为 `human`；F01 最终版本新增 `home_system_scope` 后共 9 条，全部为 `human`，日期覆盖 2026-10-15、2026-10-16、2026-10-18。用户已亲自核对新增记录的两页 CER 来源，[元数据第 92 行起](https://github.com/zserfv233/solar-calc/blob/870312e0d62eb78333b2941b2649a924f3730986/data/defaults-vic.json#L92) 保留独立日期与标记；中英构建来源页均已确认显示人工核对。默认值入口及命名来源见 [`Calculator.astro:90`](../src/components/Calculator.astro#L90)、[`sources.ts:20`](../src/lib/sources.ts#L20)。假设与二手参考价仍按备注区分，不把 `human` 解释为官方保证。 |
 | LC09 | 数据结构、HTTPS 来源和异常数值校验 | 通过 | [`schema.ts:4`](../src/lib/schema.ts#L4) 限制来源协议为 HTTPS；[`tests/data.test.ts:18`](../tests/data.test.ts#L18) 覆盖单链接、数组、嵌套来源、合法数据和非 HTTPS 拒绝；范围、效率、日期区间、寿命等测试同文件通过。 |
 | LC10 | 邮编分区缺日照记录时阻止构建 | 通过 | [`schema.ts:150`](../src/lib/schema.ts#L150) 执行跨文件校验，加载入口 [`data.ts:9`](../src/lib/data.ts#L9) 必须通过；[`tests/data.test.ts:51`](../tests/data.test.ts#L51) 验证缺失记录被拒绝，第 60 行验证数据模块加载直接失败。 |
 | LC11 | 非法输入、溢出、字段错误关联及报价联动 | 通过 | [`tests/calc.test.ts:167`](../tests/calc.test.ts#L167)、[`tests/calculator-ui.test.ts:94`](../tests/calculator-ui.test.ts#L94)、[`tests/calculator-interactions.test.ts:104`](../tests/calculator-interactions.test.ts#L104) 覆盖零/负数、邮编、日期、非有限结果、聚焦和 `aria-invalid`；[`form-behavior.test.ts:34`](../tests/form-behavior.test.ts#L34) 覆盖无参考价清空自动价及保留手填价。页面脚本测试使用表单接口替身，不能代替原生浏览器验收。 |
-| LC12 | 超出家用小型模型范围时的容量与政策边界 | 未通过 | 当前太阳能容量只校验为正数（[`calc.ts:18`](../src/lib/calc.ts#L18)），没有范围提示或分流。101 kW 在 2027-01-01 仍使用小型系统的递减年限；已有 101 kW 太阳能加电池仍显示电池补贴适用。与当前官方不同适用范围没有区分，复现及官方依据见 F01。 |
+| LC12 | 超出家用小型模型范围时的容量与政策边界 | 通过 | F01 已在 `codex/f01-capacity-cap` 修复并补验，最终提交 `870312e`。新装和已有太阳能最多 100 kW；100 kW 通过，100.01 / 101 kW 在表单与计算入口拒绝，并显示中英范围提示、聚焦对应字段。覆盖三种方案、暂存恢复及切换方案回归；v0.1 不实现中型系统规则，证据见下方 F01。 |
 | LC13 | 三种方案、省钱增量及报价扣补贴 | 通过 | [`tests/calc.test.ts:249`](../tests/calc.test.ts#L249) 核对已扣/未扣补贴及补贴超过报价拒绝；第 259 行验证只加电池等于同户有电池减无电池；[`tests/step7-calc.test.ts:25`](../tests/step7-calc.test.ts#L25) 使用独立手算补贴前报价核对净成本。 |
 | LC14 | 两套电池计收益期、回本及无放电边界 | 通过 | [`tests/calc.test.ts:89`](../tests/calc.test.ts#L89) 核对两套寿命与回本；第 174 行验证无放电时不出现零年回本或无穷每度指标；[`tests/step7-calc.test.ts:71`](../tests/step7-calc.test.ts#L71) 验证整体预测期未回本提示。 |
 | LC15 | 零上网电价、涨价情景、利用率与账单反推 | 通过 | [`tests/calc.test.ts:89`](../tests/calc.test.ts#L89) 核对零 FiT 及涨价情景，第 85 行核对低利用率提示；[`tests/step7-calc.test.ts:35`](../tests/step7-calc.test.ts#L35) 核对先扣供电费的账单反推；[`hand-calc.md:234`](../tests/fixtures/hand-calc.md#L234) 为独立依据。 |
@@ -43,15 +43,15 @@
 | LC21 | 手机上无横向滚动、文字与 SVG 不裁切 | 需用户确认 | 已有响应式样式（[`calculator.css:136`](../src/styles/calculator.css#L136)、第 164 行），但 CSS 和结构测试不能证明实机不溢出。需手机竖屏/横屏查看表单、三种结果、长金额、两种语言及来源页。 |
 | LC22 | 原生浏览器、键盘及运行时控制台/网络验收 | 需用户确认 | 本轮浏览器工具未列出可用浏览器连接，未执行真实浏览器端到端检查。需用桌面及手机浏览器完成提交、Tab 顺序、错误聚焦、展开结果、首访跳转；检查控制台及网络，确认无运行错误且输入未被请求携带。相关实现为 [`calculator.ts:55`](../src/scripts/calculator.ts#L55)、[`calculator-ui.ts:58`](../src/lib/calculator-ui.ts#L58)。 |
 | LC23 | 小字对比度及品牌眉题用途 | 需用户确认 | 已修复的页眉/页脚为 6.315:1、5.996:1，测试 [`accessibility.test.ts:23`](../tests/accessibility.test.ts#L23) 通过；结果区品牌眉题为 3.961:1（[`calculator.css:75`](../src/styles/calculator.css#L75)）。若按普通信息文字验收则低于 4.5:1；需确认该处是否属于品牌标识例外及实际可读性，不能据局部测试宣称整站符合无障碍标准。见下方观察记录。 |
-| LC24 | 来源页、待复核标记、二手报价及免责声明入口 | 通过 | 两种语言均生成 8 张来源记录卡和 `#disclaimer`。[`Sources.astro:47`](../src/components/Sources.astro#L47) 显示原始元数据，第 58 行展示估算/二手来源/财务免责声明；[`Calculator.astro:34`](../src/components/Calculator.astro#L34) 和第 102 行提供入口；[`source-catalog.test.ts:28`](../tests/source-catalog.test.ts#L28) 验证 AI 标记及嵌套元数据。 |
+| LC24 | 来源页、待复核标记、二手报价及免责声明入口 | 通过 | 初检两种语言均生成 8 张来源记录卡和 `#disclaimer`；F01 最终版本各有 9 张，新增容量范围记录显示“人工核对 / Human reviewed”。[`Sources.astro:47`](../src/components/Sources.astro#L47) 显示原始元数据，第 58 行展示估算/二手来源/财务免责声明；[`Calculator.astro:34`](../src/components/Calculator.astro#L34) 和第 102 行提供入口；[`source-catalog.test.ts:28`](../tests/source-catalog.test.ts#L28) 验证 AI 标记及嵌套元数据。 |
 | LC25 | 外部来源链接在用户浏览器实际可打开 | 需用户确认 | 17 个去重来源中 15 个 HEAD 为 HTTP 200；Sigenergy 与 Solar Choice 的 HEAD 为 403，但网页读取工具可读取 PDF/价格页。不能把反爬响应当作失效，也不能据缓存读取保证用户能打开；详见链接证据表。 |
 | LC26 | 隐私文案与存储、无表单上传逻辑一致 | 通过 | [`zh.json:9`](../src/i18n/zh.json#L9)、[`en.json:9`](../src/i18n/en.json#L9) 与 README 及四个中英页面一致；[`calculator.ts:136`](../src/scripts/calculator.ts#L136) 使用标签页暂存、第 146 行删除，长期存储仅语言（[`language.ts:16`](../src/lib/language.ts#L16)）。源码静态扫描无 `fetch`、XHR、Beacon、WebSocket、追踪调用或 cookie 写入；生成表单无 `action`，外部脚本为 0。运行时网络仍在 LC22 确认。 |
 | LC27 | README、模型限制、隐私与架构图 | 通过 | [`README.md:37`](../README.md#L37) 起说明模型及来源；第 101 行说明已有面板衰减从预测首年重算，第 164 行列出已知局限，第 181 行为隐私，第 191 行为后续规划。`docs/architecture.svg` XML 可解析且含季节数据文件；README 已引用该图。 |
 | LC28 | 依赖与本轮代码/数据保护 | 通过 | [`package.json:13`](../package.json#L13) 的应用依赖为 Astro、Zod，开发依赖为 TypeScript、Vitest，无未使用图表包；本轮未安装依赖。源码无追踪调用，本轮不改源代码、数据或测试。 |
 | LC29 | 公开站点与基线 Vercel 状态 | 通过 | 当前主域名的五条页面路径 GET 均为 HTTP 200。GitHub 公共提交状态接口返回基线 SHA、`state: success`，`Vercel: success`；URL 和命令输出见下方部署证据。此项不代替 LC30。 |
-| LC30 | 正式域名实际部署版本及生产环境最终体验 | 需用户确认 | GitHub 的成功状态不能单独证明正式域名此刻指向哪次部署。需在 Vercel 核对 Production 对应提交及域名，再在正式网址完成操作；入口为 [中文页](https://solar-calc-snowy.vercel.app/zh/)、[英文页](https://solar-calc-snowy.vercel.app/en/)。本分支未开 PR，不虚构 PR 预览链接。 |
+| LC30 | 正式域名实际部署版本及生产环境最终体验 | 需用户确认 | GitHub 的成功状态不能单独证明正式域名此刻指向哪次部署。需在 Vercel 核对 Production 对应提交及域名，再在正式网址完成操作；入口为 [中文页](https://solar-calc-snowy.vercel.app/zh/)、[英文页](https://solar-calc-snowy.vercel.app/en/)。检查分支已开 [PR #10](https://github.com/zserfv233/solar-calc/pull/10)（head 为 `codex/step-12-checklist`）；PR 状态不代替生产部署验收。 |
 | LC31 | 原执行方案逐项清单的覆盖完整性 | 需用户确认 | 当前按项目规划验收概要展开本表；本地没有原执行方案的独立逐项清单。需用户补充或确认没有遗漏的原条目，不能把未见条目默认通过。 |
-| LC32 | 人工检查点与上线范围决定 | 需用户确认 | 用户需决定 F01 的容量范围处理、完成待确认验收，并核对 main 分支保护后决定是否合并上线。这里只推送检查分支，不合并、不进入后续实施步骤。 |
+| LC32 | 人工检查点与上线范围决定 | 需用户确认 | 用户已决定 F01 采用 100 kW（含）上限，修复与补验完成；仍需完成待确认验收，并核对 main 分支保护后决定是否合并上线。这里只推送检查分支，不合并、不进入后续实施步骤。 |
 
 ## 邮编抽查：CER 原表与计算入口
 
@@ -75,7 +75,16 @@
 
 现有数据备注及 README 仍把电池向下取整称为保守模型选择。新的官方取整说明可在以后维护来源备注时补充；本轮不更新数据或文案，取整数值本身与官方一致。
 
-## F01：容量适用范围没有防护或政策分流
+## F01：容量适用范围防护——补验通过
+
+修复分支：`codex/f01-capacity-cap`。最终版本：[`870312e0d62eb78333b2941b2649a924f3730986`](https://github.com/zserfv233/solar-calc/commit/870312e0d62eb78333b2941b2649a924f3730986)。实现提交为 `f3813d1`，追加状态回归测试为 `53dbc40`，最终提交记录用户人工核对 CER 来源；此状态仅指修复分支，不代表已经合入 main 或上线。
+
+- 容量上限来自 [data/defaults-vic.json 的 `home_system_scope`](https://github.com/zserfv233/solar-calc/blob/870312e0d62eb78333b2941b2649a924f3730986/data/defaults-vic.json#L92)，为 100 kW，`last_checked=2026-10-18`、`checked_by=human`；用户已亲自核对该记录的两页 CER 来源。
+- [计算入口第 14–20 行](https://github.com/zserfv233/solar-calc/blob/870312e0d62eb78333b2941b2649a924f3730986/src/lib/calc.ts#L14) 从数据读取上限；新装和已有太阳能输入、独立面板 STC 入口共同拒绝超限。v0.1 不实现中型系统规则。
+- [容量回归测试第 22 行起](https://github.com/zserfv233/solar-calc/blob/870312e0d62eb78333b2941b2649a924f3730986/tests/capacity-scope.test.ts#L22) 验证三种方案下 100 kW 通过、100.01 / 101 kW 拒绝及错误字段映射。[页面回归第 240 行起](https://github.com/zserfv233/solar-calc/blob/870312e0d62eb78333b2941b2649a924f3730986/tests/calculator-interactions.test.ts#L240) 验证 `sessionStorage` 恢复时 `hasResult=true/false`、超限后切换方案再切回，以及 `solar_battery` 的边界提交；中英提示、字段聚焦及 `aria-invalid` 均有覆盖。
+- 最终版本实际执行 `npm test`：`tsc --noEmit && vitest run`，13 个文件、233 项通过；`npm run build`：5 页构建通过。解析中英构建来源页，各有 9 条 `human` 记录，容量范围记录日期为 2026-10-18，分别显示“人工核对”和“Human reviewed”，没有待复核样式。
+
+### 原始问题与证据（初检基线，保留历史复现）
 
 复现输入中的 101 kW 是边界探针，不是市场默认值；其他输入沿用现有手算公共输入或参考报价。
 
@@ -95,7 +104,7 @@ panelStcs(101, 3000, "2027-01-01") = { count:478, applicable:true }
 - 同时，[CER 中型太阳能说明](https://cer.gov.au/schemes/renewable-energy-target/small-scale-renewable-energy-scheme/small-scale-renewable-energy-systems/mid-scale-solar) 已公布：符合条件、在 2026-10-01 起安装的 100 kW–1 MW 系统适用新安排，采用固定 5 年视同年限。故不能把超过 100 kW 简单断言为“一律没有面板 STC”，也不能默认套用本地 2027 年的递减年限。
 - 现有待办已记录容量上限需先找来源（[`docs/todo.md:9`](todo.md#L9)）；本次找到了区分适用范围的官方依据。问题是当前家庭模型没有限制/警示其范围，也没有实现中型规则，并非建议立即把某个上限写死。
 
-待用户决定：限制并明确提示不支持超出当前家用模型范围的输入，或另设中型系统范围及规则。电池标称容量资格检查仍按已有决定留待后续版本，不能拿可用容量替代标称容量。本轮只记录，不作实现。
+用户已决定限制并明确提示不支持超出当前家用模型范围的输入，修复及补验结果见本节开头。电池标称容量资格检查仍按已有决定留待后续版本，不能拿可用容量替代标称容量。
 
 ## 浏览器与可读性观察
 
@@ -201,7 +210,7 @@ Vercel state: success
 - 电池标称容量资格检查当前只提示，后续才增加真正检查；见 [`calc.ts:62`](../src/lib/calc.ts#L62)。不将已确认的范围决定重新算成此次缺陷。
 - 小电池、高夜间负荷、年中达到吞吐上限的独立手算用例留到后续版本（[`docs/todo.md:8`](todo.md#L8)）。已有性质测试验证年中折算和能量守恒（[`tests/calc.test.ts:273`](../tests/calc.test.ts#L273)），但不能替代尚未补充的独立财务手算。
 - 错误分类仍依赖比对错误原文，改成专门错误类型已记录（[`docs/todo.md:10`](todo.md#L10)）。本轮不重构。
-- 对 F01 先明确支持范围与官方规则的对应关系；其余人工项按主表逐项记录设备、浏览器、网址及结论，再进入用户最终上线决定。
+- F01 已按用户决定修复，来源已人工核对；合并与部署仍由用户决定。其余人工项按主表逐项记录设备、浏览器、网址及结论，再进入用户最终上线决定。
 
 交付范围可用以下命令核对：
 
